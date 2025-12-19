@@ -37,8 +37,7 @@ if(CONFIG_EERIE_LEAP_COMMON)
         endif()
     endif()
 
-    add_definitions(-DBOOST_SYSTEM_DISABLE_THREADS)
-    add_definitions(-DBOOST_JSON_STACK_BUFFER_SIZE=1024)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DBOOST_DISABLE_THREADS")
 
     zephyr_include_directories(
         "${SRC_DIR}"
@@ -59,7 +58,14 @@ if(CONFIG_EERIE_LEAP_COMMON)
     add_subdirectory(libs/nameof)
     add_subdirectory(libs/eerie_memory)
 
-    target_link_libraries(app PUBLIC
+    zephyr_library_link_libraries(
+        dbcppp
+        muparser
+        nameof
+        eerie_memory
+    )
+
+    target_link_libraries(app PRIVATE
         dbcppp
         muparser
         nameof
