@@ -37,8 +37,6 @@ if(CONFIG_EERIE_LEAP_COMMON)
         endif()
     endif()
 
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -DBOOST_DISABLE_THREADS")
-
     zephyr_include_directories(
         "${SRC_DIR}"
         libs/boost
@@ -46,28 +44,128 @@ if(CONFIG_EERIE_LEAP_COMMON)
 
     zephyr_library()
 
-    file(GLOB_RECURSE SRC
-        "${SRC_DIR}/*.c"
-        "${SRC_DIR}/*.cpp"
+    set(SRC
+        "${SRC_DIR}/utilities/*.c"
+        "${SRC_DIR}/utilities/*.cpp"
     )
+
+    if(CONFIG_EERIE_LEAP_CANBUS)
+        list(APPEND SRC
+            "${SRC_DIR}/subsys/canbus/*.c"
+            "${SRC_DIR}/subsys/canbus/*.cpp"
+        )
+    endif()
+
+    if(CONFIG_EERIE_LEAP_CFB)
+        list(APPEND SRC
+            "${SRC_DIR}/subsys/cfb/*.c"
+            "${SRC_DIR}/subsys/cfb/*.cpp"
+        )
+    endif()
+
+    if(CONFIG_EERIE_LEAP_DBC)
+        list(APPEND SRC
+            "${SRC_DIR}/subsys/dbc/*.c"
+            "${SRC_DIR}/subsys/dbc/*.cpp"
+        )
+
+        add_subdirectory(libs/dbcppp)
+
+        zephyr_library_link_libraries(
+            dbcppp
+        )
+
+        target_link_libraries(app PRIVATE
+            dbcppp
+        )
+    endif()
+
+    if(CONFIG_EERIE_LEAP_FS)
+        list(APPEND SRC
+            "${SRC_DIR}/subsys/fs/*.c"
+            "${SRC_DIR}/subsys/fs/*.cpp"
+        )
+    endif()
+
+    if(CONFIG_EERIE_LEAP_GPIO)
+        list(APPEND SRC
+            "${SRC_DIR}/subsys/gpio/*.c"
+            "${SRC_DIR}/subsys/gpio/*.cpp"
+        )
+    endif()
+
+    if(CONFIG_EERIE_LEAP_LUA_SCRIPT)
+        list(APPEND SRC
+            "${SRC_DIR}/subsys/lua_script/*.c"
+            "${SRC_DIR}/subsys/lua_script/*.cpp"
+        )
+    endif()
+
+    if(CONFIG_EERIE_LEAP_MATH_PARSER)
+        list(APPEND SRC
+            "${SRC_DIR}/subsys/math_parser/*.c"
+            "${SRC_DIR}/subsys/math_parser/*.cpp"
+        )
+
+        add_subdirectory(libs/muparser)
+
+        zephyr_library_link_libraries(
+            muparser
+        )
+
+        target_link_libraries(app PRIVATE
+            muparser
+        )
+    endif()
+
+    if(CONFIG_EERIE_LEAP_MDF)
+        list(APPEND SRC
+            "${SRC_DIR}/subsys/mdf/*.c"
+            "${SRC_DIR}/subsys/mdf/*.cpp"
+        )
+    endif()
+
+    if(CONFIG_EERIE_LEAP_MODBUS)
+        list(APPEND SRC
+            "${SRC_DIR}/subsys/modbus/*.c"
+            "${SRC_DIR}/subsys/modbus/*.cpp"
+        )
+    endif()
+
+    if(CONFIG_EERIE_LEAP_RANDOM)
+        list(APPEND SRC
+            "${SRC_DIR}/subsys/random/*.c"
+            "${SRC_DIR}/subsys/random/*.cpp"
+        )
+    endif()
+
+    if(CONFIG_EERIE_LEAP_THREADING)
+        list(APPEND SRC
+            "${SRC_DIR}/subsys/threading/*.c"
+            "${SRC_DIR}/subsys/threading/*.cpp"
+        )
+    endif()
+
+    if(CONFIG_EERIE_LEAP_TIME)
+        list(APPEND SRC
+            "${SRC_DIR}/subsys/time/*.c"
+            "${SRC_DIR}/subsys/time/*.cpp"
+        )
+    endif()
+
+    file(GLOB_RECURSE SRC ${SRC})
 
     zephyr_library_sources(${SRC})
 
-    add_subdirectory(libs/dbcppp)
-    add_subdirectory(libs/muparser)
     add_subdirectory(libs/nameof)
     add_subdirectory(libs/eerie_memory)
 
     zephyr_library_link_libraries(
-        dbcppp
-        muparser
         nameof
         eerie_memory
     )
 
     target_link_libraries(app PRIVATE
-        dbcppp
-        muparser
         nameof
         eerie_memory
     )

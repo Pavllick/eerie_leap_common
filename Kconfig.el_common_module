@@ -5,6 +5,68 @@ config EERIE_LEAP_COMMON
     help
       Add EerieLeap common code.
 
+
+config EERIE_LEAP_CANBUS
+    bool "EerieLeap CANBus"
+    help
+      Add EerieLeap CANBus.
+
+config EERIE_LEAP_CFB
+    bool "EerieLeap CFB"
+    help
+      Add EerieLeap CFB.
+
+config EERIE_LEAP_DBC
+    bool "EerieLeap DBC"
+    help
+      Add EerieLeap DBC.
+
+config EERIE_LEAP_FS
+    bool "EerieLeap FS"
+    help
+      Add EerieLeap FS.
+
+config EERIE_LEAP_GPIO
+    bool "EerieLeap GPIO"
+    help
+      Add EerieLeap GPIO.
+
+config EERIE_LEAP_LUA_SCRIPT
+    bool "EerieLeap Lua Script"
+    select LUA
+    help
+      Add EerieLeap Lua Script.
+
+config EERIE_LEAP_MATH_PARSER
+    bool "EerieLeap Math Parser"
+    help
+      Add EerieLeap Math Parser.
+
+config EERIE_LEAP_MDF
+    bool "EerieLeap MDF"
+    help
+      Add EerieLeap MDF.
+
+config EERIE_LEAP_MODBUS
+    bool "EerieLeap Modbus"
+    help
+      Add EerieLeap Modbus.
+
+config EERIE_LEAP_RANDOM
+    bool "EerieLeap Random"
+    help
+      Add EerieLeap Random.
+
+config EERIE_LEAP_THREADING
+    bool "EerieLeap Threading"
+    help
+      Add EerieLeap Threading.
+
+config EERIE_LEAP_TIME
+    bool "EerieLeap Time"
+    help
+      Add EerieLeap Time.
+
 module = EERIE_LEAP_COMMON
 module-str = eerie_leap_common
 source "subsys/logging/Kconfig.template.log_config"
