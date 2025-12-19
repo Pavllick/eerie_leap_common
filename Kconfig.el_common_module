@@ -1,0 +1,11 @@
+menu "EerieLeap Common"
+
+config EERIE_LEAP_COMMON
+    bool "EerieLeap Common Module"
+    help
+      Add EerieLeap common code.
+
+module = EERIE_LEAP_COMMON
+module-str = eerie_leap_common
+source "subsys/logging/Kconfig.template.log_config"
+endmenu

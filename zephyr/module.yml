@@ -1,0 +1,4 @@
+name: el_common
+build:
+  cmake: .
+  kconfig: Kconfig.el_common_module

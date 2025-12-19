@@ -1,0 +1,26 @@
+# editors
+.vscode
+.cache
+*.swp
+*~
+.editorconfig
+.clang-format
+.clang-tidy
+
+__pycache__/
+
+# docs
+/doc/_build*
+
+# docker
+/docker-compose.yml
+
+# tools
+/tools
+
+#libs
+/libs/boost
+
+# boost
+project-config.jam
+b2
