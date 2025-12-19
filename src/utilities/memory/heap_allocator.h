@@ -100,47 +100,50 @@ public:
     }
 };
 
-// template <class T, class U>
-// bool operator==(const HeapAllocator<T>& lhs, const HeapAllocator<U>& rhs) { return true; }
+// TODO: Remove methods bellow after EerieLeap RoundGauge project migration
+// to new memory allocator utilities is complete.
 
-// template <class T, class U>
-// bool operator!=(const HeapAllocator<T>& lhs, const HeapAllocator<U>& rhs) { return false; }
+template <class T, class U>
+bool operator==(const HeapAllocator<T>& lhs, const HeapAllocator<U>& rhs) { return true; }
 
-// template <typename T, typename... Args>
-// std::shared_ptr<T> make_shared_ext(Args&&... args) {
-//     return std::allocate_shared<T>(HeapAllocator<T>(), std::forward<Args>(args)...);
-// }
+template <class T, class U>
+bool operator!=(const HeapAllocator<T>& lhs, const HeapAllocator<U>& rhs) { return false; }
 
-// struct ext_deleter {
-//     template<typename T>
-//     void operator()(T* p) const {
-//         if (p) {
-//             p->~T();
+template <typename T, typename... Args>
+std::shared_ptr<T> make_shared_ext(Args&&... args) {
+    return std::allocate_shared<T>(HeapAllocator<T>(), std::forward<Args>(args)...);
+}
 
-//             HeapAllocator<T> allocator;
-//             allocator.deallocate(p, 1);
-//         }
-//     }
-// };
+struct ext_deleter {
+    template<typename T>
+    void operator()(T* p) const {
+        if (p) {
+            p->~T();
 
-// template<typename T>
-// using ext_unique_ptr = std::unique_ptr<T, ext_deleter>;
+            HeapAllocator<T> allocator;
+            allocator.deallocate(p, 1);
+        }
+    }
+};
 
-// template <typename T, typename... Args>
-// ext_unique_ptr<T> make_unique_ext(Args&&... args) {
-//     HeapAllocator<T> allocator;
-//     auto p = allocator.allocate(1);
+template<typename T>
+using ext_unique_ptr = std::unique_ptr<T, ext_deleter>;
 
-//     try {
-//         new (p) T(std::forward<Args>(args)...);
-//         return ext_unique_ptr<T>(p, ext_deleter{});
-//     } catch (...) {
-//         allocator.deallocate(p, 1);
-//         throw;
-//     }
-// }
+template <typename T, typename... Args>
+ext_unique_ptr<T> make_unique_ext(Args&&... args) {
+    HeapAllocator<T> allocator;
+    auto p = allocator.allocate(1);
 
-// using ExtVector = std::vector<uint8_t, HeapAllocator<uint8_t>>;
-// using ExtString = std::basic_string<char, std::char_traits<char>, HeapAllocator<char>>;
+    try {
+        new (p) T(std::forward<Args>(args)...);
+        return ext_unique_ptr<T>(p, ext_deleter{});
+    } catch (...) {
+        allocator.deallocate(p, 1);
+        throw;
+    }
+}
+
+using ExtVector = std::vector<uint8_t, HeapAllocator<uint8_t>>;
+using ExtString = std::basic_string<char, std::char_traits<char>, HeapAllocator<char>>;
 
 } // namespace eerie_leap::utilities::memory
