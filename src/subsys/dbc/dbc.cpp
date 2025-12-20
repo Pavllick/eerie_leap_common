@@ -73,6 +73,22 @@ DbcMessage* Dbc::GetMessage(uint32_t frame_id) {
    return &messages_.at(frame_id);
 }
 
+std::pmr::unordered_map<uint32_t, DbcMessage>& Dbc::GetAllMessages() {
+    if(is_indexed_all_dbc_messages_)
+        return messages_;
+
+    auto* net = GetOrCreateDbcNetwork();
+
+    for(dbcppp::Message& msg : net->GetMessages()) {
+        if(!messages_.contains(msg.Id()))
+            messages_.emplace(msg.Id(), &msg);
+   }
+
+   is_indexed_all_dbc_messages_ = true;
+
+    return messages_;
+}
+
 dbcppp::Message* Dbc::GetDbcMessage(uint32_t frame_id) {
    auto* net = GetOrCreateDbcNetwork();
 

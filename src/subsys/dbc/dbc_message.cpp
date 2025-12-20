@@ -97,6 +97,15 @@ bool DbcMessage::HasSignal(std::string_view signal_name) {
     return HasSignal(StringHelpers::GetHash(signal_name));
 }
 
+std::unordered_set<size_t> DbcMessage::GetSignalNameHashes() const {
+    std::unordered_set<size_t> signal_name_hashes;
+
+    for(auto& signal : message_->GetSignals())
+        signal_name_hashes.insert(StringHelpers::GetHash(signal.Name()));
+
+    return signal_name_hashes;
+}
+
 double DbcMessage::GetSignalValue(size_t signal_name_hash, const void* bytes) {
    if(!HasSignal(signal_name_hash))
       throw std::runtime_error("DBC Signal name not found.");

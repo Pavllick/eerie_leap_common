@@ -2,6 +2,7 @@
 
 #include <zephyr/kernel.h>
 #include <string>
+#include <unordered_set>
 #include <unordered_map>
 #include <memory>
 #include <functional>
@@ -62,6 +63,7 @@ public:
    void AddSignal(std::pmr::string name, uint32_t start_bit, uint32_t size_bits, float factor, float offset, std::pmr::string unit);
    bool HasSignal(size_t signal_name_hash);
    bool HasSignal(std::string_view signal_name);
+   std::unordered_set<size_t> GetSignalNameHashes() const;
 
    double GetSignalValue(size_t signal_name_hash, const void* bytes);
    std::vector<uint8_t> EncodeMessage(const SignalReader& signal_reader);
