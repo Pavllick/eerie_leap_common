@@ -47,6 +47,8 @@ if(CONFIG_EERIE_LEAP_COMMON)
     set(SRC
         "${SRC_DIR}/utilities/*.c"
         "${SRC_DIR}/utilities/*.cpp"
+        "${SRC_DIR}/configuration/*.c"
+        "${SRC_DIR}/configuration/*.cpp"
     )
 
     if(CONFIG_EERIE_LEAP_CANBUS)
