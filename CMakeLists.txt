@@ -57,6 +57,7 @@ if(CONFIG_EERIE_LEAP_COMMON)
         "${SRC_DIR}/configuration/services/*.c"
         "${SRC_DIR}/configuration/services/*.cpp"
         "${SRC_DIR}/configuration/cbor/cbor_serializer.cpp"
+        "${SRC_DIR}/configuration/json/boost_json_config.cpp"
         "${SRC_DIR}/configuration/json/json_serializer.cpp"
     )
 
