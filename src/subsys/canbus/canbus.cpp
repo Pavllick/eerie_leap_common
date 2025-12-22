@@ -173,12 +173,12 @@ void Canbus::CanFrameReceivedCallback(const device *dev, can_frame *frame, void 
     std::copy(frame->data, frame->data + frame->dlc, can_frame.data.begin());
 
     if(canbus->handlers_.contains(frame->id)) {
-        for(const auto& handler : canbus->handlers_.at(frame->id))
+        for(const auto& [_, handler] : canbus->handlers_.at(frame->id))
             handler(can_frame);
     }
 }
 
-bool Canbus::RegisterFrameReceivedHandler(uint32_t can_id, CanFrameHandler handler) {
+int Canbus::RegisterFrameReceivedHandler(uint32_t can_id, CanFrameHandler handler) {
     if(!is_initialized_) {
         LOG_ERR("CANBus is not initialized.");
         return false;
@@ -186,12 +186,24 @@ bool Canbus::RegisterFrameReceivedHandler(uint32_t can_id, CanFrameHandler handl
 
     if(!handlers_.contains(can_id))
         handlers_.insert({can_id, {}});
-    handlers_.at(can_id).push_back(std::move(handler));
+
+    int max_handler_id = 0;
+    for(const auto& [handler_id, _] : handlers_.at(can_id))
+        max_handler_id = std::max(max_handler_id, handler_id);
+
+    int handler_id = max_handler_id + 1;
+
+    handlers_.at(can_id).emplace(handler_id, std::move(handler));
 
     if(atomic_get(&auto_detect_running_) && !bitrate_detected_)
-        return true;
+        return false;
 
-    return RegisterFilter(can_id);
+    if(!RegisterFilter(can_id)) {
+        handlers_.at(can_id).erase(handler_id);
+        return -1;
+    }
+
+    return handler_id;
 }
 
 bool Canbus::RegisterFilter(uint32_t can_id) {
@@ -217,6 +229,34 @@ bool Canbus::RegisterFilter(uint32_t can_id) {
         }
 
         can_filters_.insert({can_id, filter});
+    }
+
+    return true;
+}
+
+bool Canbus::RemoveFrameReceivedHandler(uint32_t can_id, int handler_id) {
+    if(!is_initialized_) {
+        LOG_ERR("CANBus is not initialized.");
+        return false;
+    }
+
+    if(!handlers_.contains(can_id))
+        return false;
+
+    auto& handler_list = handlers_.at(can_id);
+
+    if(!handler_list.contains(handler_id))
+        return false;
+
+    handler_list.erase(handler_id);
+    if(handler_list.empty()) {
+        // Remove filter
+        if(can_filters_.contains(can_id)) {
+            can_remove_rx_filter(canbus_dev_, can_filters_.at(can_id).id);
+            can_filters_.erase(can_id);
+        }
+
+        handlers_.erase(can_id);
     }
 
     return true;

@@ -23,7 +23,7 @@ class Canbus {
 private:
     const device *canbus_dev_;
     std::unordered_map<uint32_t, can_filter> can_filters_;
-    std::unordered_map<uint32_t, std::vector<CanFrameHandler>> handlers_;
+    std::unordered_map<uint32_t, std::unordered_map<int, CanFrameHandler>> handlers_;
 
     bool is_initialized_ = false;
     CanbusType type_;
@@ -82,7 +82,8 @@ public:
     ~Canbus();
 
     bool Initialize();
-    bool RegisterFrameReceivedHandler(uint32_t can_id, CanFrameHandler handler);
+    int RegisterFrameReceivedHandler(uint32_t can_id, CanFrameHandler handler);
+    bool RemoveFrameReceivedHandler(uint32_t can_id, int handler_id);
 
     CanbusType GetType() const { return type_; }
     void SendFrame(const CanFrame& frame);
