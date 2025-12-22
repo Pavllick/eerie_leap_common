@@ -1,3 +1,5 @@
+#include <boost/json.hpp>
+
 #include "canbus_configuration_validator.h"
 #include "canbus_configuration_parser_helpers.hpp"
 #include "canbus_configuration_json_parser.h"
