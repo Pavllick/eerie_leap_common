@@ -44,12 +44,23 @@ if(CONFIG_EERIE_LEAP_COMMON)
 
     zephyr_library()
 
+    # ======== Utilities ========
+
     set(SRC
         "${SRC_DIR}/utilities/*.c"
         "${SRC_DIR}/utilities/*.cpp"
-        "${SRC_DIR}/configuration/*.c"
-        "${SRC_DIR}/configuration/*.cpp"
     )
+
+    # ======== Configuration ========
+
+    list(APPEND SRC
+        "${SRC_DIR}/configuration/services/*.c"
+        "${SRC_DIR}/configuration/services/*.cpp"
+        "${SRC_DIR}/configuration/cbor/cbor_serializer.cpp"
+        "${SRC_DIR}/configuration/json/json_serializer.cpp"
+    )
+
+    # ======== Subsystems ========
 
     if(CONFIG_EERIE_LEAP_CANBUS)
         list(APPEND SRC
@@ -154,6 +165,22 @@ if(CONFIG_EERIE_LEAP_COMMON)
             "${SRC_DIR}/subsys/time/*.cpp"
         )
     endif()
+
+    # ======== Domain ========
+
+    if(CONFIG_EERIE_LEAP_DOMAIN_CANBUS)
+        list(APPEND SRC
+            "${SRC_DIR}/domain/canbus_domain/*.c"
+            "${SRC_DIR}/domain/canbus_domain/*.cpp"
+        )
+
+        list(APPEND SRC
+            "${SRC_DIR}/configuration/cbor/traits/canbus_config_trait.cpp"
+            "${SRC_DIR}/configuration/cbor/cbor_canbus_config/*.cpp"
+        )
+    endif()
+
+    # ========================
 
     file(GLOB_RECURSE SRC ${SRC})
 

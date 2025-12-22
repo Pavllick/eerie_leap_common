@@ -67,6 +67,11 @@ config EERIE_LEAP_TIME
     help
       Add EerieLeap Time.
 
+config EERIE_LEAP_DOMAIN_CANBUS
+    bool "EerieLeap CANBus Domain"
+    help
+      Add EerieLeap CANBus Domain.
+
 module = EERIE_LEAP_COMMON
 module-str = eerie_leap_common
 source "subsys/logging/Kconfig.template.log_config"
