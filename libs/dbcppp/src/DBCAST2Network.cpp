@@ -503,7 +503,7 @@ static auto getMessages(std::pmr::memory_resource* mr, const G_Network& gnet, Ca
             , std::move(signal_groups));
         if (messages.back().Error() == Message::EErrorCode::MuxValeWithoutMuxSignal)
         {
-            LOG_DBG("Message '%s' does have mux value but no mux signal!", messages.back().Name());
+            LOG_DBG("Message '%s' does have mux value but no mux signal!", messages.back().Name().data());
         }
     }
     return messages;
