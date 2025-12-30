@@ -24,6 +24,11 @@ protected:
     std::streamsize xsgetn(char* s, std::streamsize n) override;
     std::streambuf::int_type underflow() override;
     int sync() override;
+    std::streambuf::pos_type seekoff(
+        std::streambuf::off_type off,
+        std::ios_base::seekdir way,
+        std::ios_base::openmode which) override;
+    std::streambuf::pos_type seekpos(std::streambuf::pos_type sp, std::ios_base::openmode which) override;
 
 public:
     enum class OpenMode {

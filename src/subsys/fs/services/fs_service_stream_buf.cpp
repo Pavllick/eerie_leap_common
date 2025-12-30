@@ -118,4 +118,36 @@ int FsServiceStreamBuf::sync() {
     return -1;
 }
 
+std::streambuf::pos_type FsServiceStreamBuf::seekoff(
+    std::streambuf::off_type off,
+    std::ios_base::seekdir way,
+    std::ios_base::openmode which) {
+
+    if(!file_opened_)
+        return std::streambuf::pos_type(std::streambuf::off_type(-1));
+
+    int whence = FS_SEEK_SET;
+    if(way == std::ios_base::cur)
+        whence = FS_SEEK_CUR;
+    else if(way == std::ios_base::end)
+        whence = FS_SEEK_END;
+
+    int rc = fs_seek(&file_, static_cast<off_t>(off), whence);
+    if(rc != 0)
+        return std::streambuf::pos_type(std::streambuf::off_type(-1));
+
+    off_t pos = fs_tell(&file_);
+    if(pos < 0)
+        return std::streambuf::pos_type(std::streambuf::off_type(-1));
+
+    setg(nullptr, nullptr, nullptr);
+
+    return std::streambuf::pos_type(static_cast<std::streambuf::off_type>(pos));
+}
+
+std::streambuf::pos_type FsServiceStreamBuf::seekpos(std::streambuf::pos_type sp, std::ios_base::openmode /*which*/) {
+    auto off = static_cast<std::streambuf::off_type>(sp);
+    return seekoff(off, std::ios_base::beg, std::ios_base::openmode(0));
+}
+
 } // namespace eerie_leap::subsys::fs::services

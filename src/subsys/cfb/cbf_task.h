@@ -3,6 +3,7 @@
 #include <functional>
 
 #include <zephyr/kernel.h>
+#include <zephyr/device.h>
 #include <zephyr/sys/atomic.h>
 
 namespace eerie_leap::subsys::cfb {

@@ -1,3 +1,13 @@
+#include <cmath>
+
+// Some std libraries on this toolchain don't inject the long-double overload
+// into namespace std even after including <cmath>. Boost.Spirit uses
+// std::copysignl in headers; provide it from the global symbol if needed
+// without modifying Boost sources.
+namespace std {
+    using ::copysignl;
+    using ::copysign;
+}
 
 #include <boost/spirit/home/x3.hpp>
 #include <boost/fusion/include/adapt_struct.hpp>
@@ -141,7 +151,7 @@ namespace dbcppp::DBCX3::Grammar
         > eoi;
 
     static const auto unsigned_int = uint64;
-    static const auto signed_int= int64;
+    static const auto signed_int = int64;
 
     static const auto single_line_comment = "//" >> *(char_ - eol) >> (eol | eoi);
     static const auto block_comment_def   = ("/*" >> *(block_comment | char_ - "*/")) > "*/";
@@ -276,7 +286,12 @@ namespace dbcppp::DBCX3::Grammar
 
     static const auto attribute_default_def =
         (lexeme[(lit("BA_DEF_DEF_REL_") | lit("BA_DEF_DEF_")) >> omit[space]]) > attribute_name > attribute_value > ';';
-    static const auto attribute_value_def = double_ | signed_int | quoted_string;
+
+    // static const auto attribute_value_def = double_ | signed_int | quoted_string;
+    static const auto attribute_value_def =
+          double_[([](auto& ctx){ _val(ctx) = variant_attr_value_t(_attr(ctx)); })]
+        | signed_int[([](auto& ctx){ _val(ctx) = variant_attr_value_t(static_cast<int64_t>(_attr(ctx))); })]
+        | quoted_string[([](auto& ctx){ _val(ctx) = variant_attr_value_t(std::pmr::string(_attr(ctx))); })];
 
     static const auto attribute_value_ent_def =
             lexeme[lit("BA_") >> omit[skipper]]
@@ -511,6 +526,14 @@ public:
         }
 
         return c;
+    }
+
+    std::streambuf::pos_type seekoff(std::streambuf::off_type, std::ios_base::seekdir, std::ios_base::openmode) override {
+        return std::streambuf::pos_type(std::streambuf::off_type(-1));
+    }
+
+    std::streambuf::pos_type seekpos(std::streambuf::pos_type, std::ios_base::openmode) override {
+        return std::streambuf::pos_type(std::streambuf::off_type(-1));
     }
 
 private:
