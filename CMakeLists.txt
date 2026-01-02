@@ -70,6 +70,13 @@ if(CONFIG_EERIE_LEAP_COMMON)
         )
     endif()
 
+    if(CONFIG_EERIE_LEAP_CDMP)
+        list(APPEND SRC
+            "${SRC_DIR}/subsys/cdmp/*.c"
+            "${SRC_DIR}/subsys/cdmp/*.cpp"
+        )
+    endif()
+
     if(CONFIG_EERIE_LEAP_CFB)
         list(APPEND SRC
             "${SRC_DIR}/subsys/cfb/*.c"
