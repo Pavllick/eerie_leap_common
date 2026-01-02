@@ -125,7 +125,7 @@ bool Canbus::SetDataTiming(uint32_t bitrate) {
     return true;
 }
 
-void Canbus::SendFrame(const CanFrame& frame) {
+void Canbus::SendFrame(uint32_t frame_id, std::span<const uint8_t> frame_data) {
     if(!is_initialized_ || !bitrate_detected_)
         return;
 
@@ -138,11 +138,11 @@ void Canbus::SendFrame(const CanFrame& frame) {
         flags |= CAN_FRAME_IDE;
 
     struct can_frame can_frame = {
-        .id = frame.id,
-        .dlc = can_bytes_to_dlc(frame.data.size()),
+        .id = frame_id,
+        .dlc = can_bytes_to_dlc(frame_data.size()),
         .flags = flags,
     };
-    memcpy(can_frame.data, frame.data.data(), frame.data.size());
+    memcpy(can_frame.data, frame_data.data(), frame_data.size());
 
     int res = can_send(
         canbus_dev_,

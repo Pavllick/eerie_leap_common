@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <array>
+#include <span>
 #include <vector>
 #include <unordered_map>
 #include <functional>
@@ -86,7 +87,7 @@ public:
     bool RemoveFrameReceivedHandler(uint32_t can_id, int handler_id);
 
     CanbusType GetType() const { return type_; }
-    void SendFrame(const CanFrame& frame);
+    void SendFrame(uint32_t frame_id, std::span<const uint8_t> frame_data);
     uint32_t GetDetectedBitrate() const { return bitrate_; }
     bool IsBitrateDetected() const { return bitrate_detected_; }
     void RegisterBitrateDetectedCallback(const BitrateDetectedCallback& callback);
