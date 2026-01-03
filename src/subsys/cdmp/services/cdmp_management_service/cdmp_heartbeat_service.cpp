@@ -11,14 +11,9 @@ CdmpHeartbeatService::CdmpHeartbeatService(
     std::shared_ptr<Canbus> canbus,
     std::shared_ptr<CdmpCanIdManager> can_id_manager,
     std::shared_ptr<CdmpDevice> device,
-    std::shared_ptr<CdmpStatusMachine> status_machine)
-    : CdmpCanbusServiceBase(std::move(canbus), std::move(can_id_manager), std::move(device), std::move(status_machine))
-    , heartbeat_interval_(DEFAULT_HEARTBEAT_INTERVAL)
-    , last_heartbeat_sent_(0)
-    , heartbeat_sequence_number_(0)
-    , heartbeat_enabled_(true)
-    , heartbeat_handler_id_(-1) {
-}
+    std::shared_ptr<CdmpNetworkService> network_service)
+    : CdmpCanbusServiceBase(std::move(canbus), std::move(can_id_manager), std::move(device)),
+    network_service_(std::move(network_service)) {}
 
 CdmpHeartbeatService::~CdmpHeartbeatService() {
     Stop();
@@ -35,16 +30,20 @@ void CdmpHeartbeatService::Stop() {
 }
 
 void CdmpHeartbeatService::ProcessFrame(std::span<const uint8_t> frame_data) {
+    CdmpManagementMessageType message_type = static_cast<CdmpManagementMessageType>(frame_data[0]);
+
+    switch(message_type) {
+        case CdmpManagementMessageType::HEARTBEAT:
+            ProcessHeartbeatFrame(frame_data);
+            break;
+    }
+}
+
+void CdmpHeartbeatService::ProcessHeartbeatFrame(std::span<const uint8_t> frame_data) {
     try {
         CdmpHeartbeatMessage heartbeat = CdmpHeartbeatMessage::FromCanFrame(frame_data);
-
-        LOG_DBG("Received heartbeat from device %d: health=%d, seq=%d, capabilities=0x%08X",
-            heartbeat.device_id, static_cast<uint8_t>(heartbeat.health_status),
-            heartbeat.sequence_number, heartbeat.capability_flags);
-
-        // Update network service with heartbeat information
-        // This would integrate with CdmpNetworkService
-
+        network_service_->UpdateDeviceFromHeartbeat(heartbeat);
+        LOG_DBG("Processed heartbeat frame");
     } catch (const std::exception& e) {
         LOG_ERR("Error processing heartbeat frame: %s", e.what());
     }

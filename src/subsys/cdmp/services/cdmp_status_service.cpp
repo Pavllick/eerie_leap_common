@@ -5,9 +5,8 @@ namespace eerie_leap::subsys::cdmp::services {
 CdmpStatusService::CdmpStatusService(
     std::shared_ptr<Canbus> canbus,
     std::shared_ptr<CdmpCanIdManager> can_id_manager,
-    std::shared_ptr<CdmpDevice> device,
-    std::shared_ptr<CdmpStatusMachine> status_machine)
-        : CdmpCanbusServiceBase(std::move(canbus), std::move(can_id_manager), std::move(device), std::move(status_machine)),
+    std::shared_ptr<CdmpDevice> device)
+        : CdmpCanbusServiceBase(std::move(canbus), std::move(can_id_manager), std::move(device)),
         canbus_handler_id_(-1) {}
 
 CdmpStatusService::~CdmpStatusService() {

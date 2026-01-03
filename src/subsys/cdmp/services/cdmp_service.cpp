@@ -1,5 +1,4 @@
 #include <zephyr/logging/log.h>
-#include <zephyr/random/random.h>
 
 #include "../models/cdmp_device.h"
 #include "cdmp_management_service/cdmp_management_service.h"
@@ -17,37 +16,38 @@ using namespace eerie_leap::subsys::cdmp::services::cdmp_management_service;
 using namespace eerie_leap::subsys::cdmp::services::cdmp_command_service;
 
 CdmpService::CdmpService(
+    std::shared_ptr<ITimeService> time_service,
     std::shared_ptr<Canbus> canbus,
     CdmpDeviceType device_type,
     uint32_t unique_identifier,
     uint32_t base_can_id)
-    : canbus_(std::move(canbus))
-    , next_transaction_id_(1)
-    , base_can_id_(base_can_id)
-    , device_type_(device_type)
-    , unique_identifier_(unique_identifier)
-    , auto_discovery_enabled_(true)
-    , heartbeat_interval_(DEFAULT_HEARTBEAT_INTERVAL)
-    , last_status_broadcast_(0)
-    , status_broadcast_interval_(DEFAULT_STATUS_BROADCAST_INTERVAL)
-    , status_sequence_number_(0) {
+        : time_service_(std::move(time_service)),
+        canbus_(std::move(canbus)),
+        base_can_id_(base_can_id),
+        device_type_(device_type),
+        unique_identifier_(unique_identifier) {
 
-    // Generate unique identifier if not provided
-    if(unique_identifier_ == DEFAULT_UNIQUE_IDENTIFIER)
-        unique_identifier_ = sys_rand32_get();
+    if(time_service_ == nullptr)
+        throw std::runtime_error("Time service is null");
+
+    if(canbus_ == nullptr)
+        throw std::runtime_error("Canbus interface is null");
+
+    if(unique_identifier_ == 0)
+        throw std::runtime_error("Unique identifier must be non-zero");
 
     can_id_manager_ = std::make_shared<CdmpCanIdManager>();
     device_ = std::make_shared<CdmpDevice>(unique_identifier_, device_type_);
-    status_machine_ = std::make_shared<CdmpStatusMachine>(device_);
+    work_queue_ = std::make_shared<CdmpWorkQueue>();
 
     canbus_services_.emplace_back(std::make_unique<CdmpManagementService>(
-        canbus_, can_id_manager_, device_, status_machine_));
+        canbus_, can_id_manager_, device_));
     canbus_services_.emplace_back(std::make_unique<CdmpStatusService>(
-        canbus_, can_id_manager_, device_, status_machine_));
+        canbus_, can_id_manager_, device_));
     canbus_services_.emplace_back(std::make_unique<CdmpCommandService>(
-        canbus_, can_id_manager_, device_, status_machine_));
+        canbus_, can_id_manager_, device_));
     canbus_services_.emplace_back(std::make_unique<CdmpStateService>(
-        canbus_, can_id_manager_, device_, status_machine_));
+        canbus_, can_id_manager_, device_));
     // TODO: Add IsoTp Service
 }
 
@@ -56,12 +56,7 @@ CdmpService::~CdmpService() {
 }
 
 bool CdmpService::Initialize() {
-    if(!canbus_) {
-        LOG_ERR("CAN bus interface is null");
-        return false;
-    }
-
-    status_machine_->Initialize();
+    work_queue_->Initialize();
 
     LOG_INF("CDMP service initialized with device type %d, unique ID 0x%08X",
         std::to_underlying(device_type_), unique_identifier_);
@@ -70,36 +65,31 @@ bool CdmpService::Initialize() {
 }
 
 void CdmpService::Start() {
-    if(!work_queue_thread_) {
-        work_queue_thread_ = std::make_unique<WorkQueueThread>(
-            "cdmp_service", thread_stack_size_, thread_priority_);
-        work_queue_thread_->Initialize();
-    }
-
     for(auto& service : canbus_services_)
         service->Start();
 
     if(auto_discovery_enabled_)
-        status_machine_->StartDiscovery();
+        device_->StartDiscovery();
+
+    is_running_ = true;
 
     LOG_INF("CDMP service started");
 }
 
 void CdmpService::Stop() {
-    // WorkQueueThread destructor handles stopping the work queue
-    work_queue_thread_.reset();
-
     for(auto& service : canbus_services_)
         service->Stop();
 
     if(device_)
         device_->SetStatus(CdmpDeviceStatus::OFFLINE);
 
+    is_running_ = false;
+
     LOG_INF("CDMP service stopped");
 }
 
 bool CdmpService::IsRunning() const {
-    return work_queue_thread_ != nullptr;
+    return is_running_;
 }
 
 uint8_t CdmpService::GetNextTransactionId() {

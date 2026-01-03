@@ -36,8 +36,7 @@ public:
     CdmpStateService(
         std::shared_ptr<Canbus> canbus,
         std::shared_ptr<CdmpCanIdManager> can_id_manager,
-        std::shared_ptr<CdmpDevice> device,
-        std::shared_ptr<CdmpStatusMachine> status_machine);
+        std::shared_ptr<CdmpDevice> device);
 
     ~CdmpStateService();
 

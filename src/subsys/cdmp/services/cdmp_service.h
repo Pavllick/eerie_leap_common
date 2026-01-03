@@ -6,16 +6,20 @@
 #include <vector>
 #include <zephyr/kernel.h>
 
+#include "subsys/time/i_time_service.h"
 #include "subsys/canbus/canbus.h"
 #include "subsys/threading/work_queue_thread.h"
+
+#include "../utilities/cdmp_can_id_manager.h"
 #include "../models/cdmp_device.h"
 #include "../models/cdmp_message.h"
-#include "../utilities/cdmp_status_machine.h"
 
 #include "i_cdmp_canbus_service.h"
+#include "cdmp_work_queue.h"
 
 namespace eerie_leap::subsys::cdmp::services {
 
+using namespace eerie_leap::subsys::time;
 using namespace eerie_leap::subsys::canbus;
 using namespace eerie_leap::subsys::threading;
 using namespace eerie_leap::subsys::cdmp::models;
@@ -28,16 +32,13 @@ class CdmpService {
 private:
     // Core components
     std::shared_ptr<CdmpDevice> device_;
-    std::shared_ptr<CdmpStatusMachine> status_machine_;
+    std::shared_ptr<CdmpWorkQueue> work_queue_;
+
+    std::shared_ptr<ITimeService> time_service_;
 
     // CAN interface
     std::shared_ptr<Canbus> canbus_;
     std::shared_ptr<CdmpCanIdManager> can_id_manager_;
-
-    // Threading
-    std::unique_ptr<WorkQueueThread> work_queue_thread_;
-    static constexpr int thread_stack_size_ = 4096;
-    static constexpr int thread_priority_ = 5;
 
     std::vector<std::unique_ptr<ICdmpCanbusService>> canbus_services_;
 
@@ -45,21 +46,22 @@ private:
     std::unordered_map<uint8_t, std::unique_ptr<CdmpDevice>> network_devices_;
 
     // Transaction management
-    uint8_t next_transaction_id_;
+    uint8_t next_transaction_id_ = 1;
     std::unordered_map<uint8_t, uint64_t> pending_transactions_;
     static constexpr uint64_t TRANSACTION_TIMEOUT = K_MSEC(500).ticks;
 
     // Configuration
+    bool is_running_ = false;
     uint32_t base_can_id_;
     CdmpDeviceType device_type_;
-    uint32_t unique_identifier_;
-    bool auto_discovery_enabled_;
-    uint64_t heartbeat_interval_;
+    uint32_t unique_identifier_ = 0;
+    bool auto_discovery_enabled_ = true;
+    uint64_t heartbeat_interval_ = DEFAULT_HEARTBEAT_INTERVAL;
 
     // Timing
-    uint64_t last_status_broadcast_;
-    uint64_t status_broadcast_interval_;
-    uint8_t status_sequence_number_;
+    uint64_t last_status_broadcast_ = 0;
+    uint64_t status_broadcast_interval_ = DEFAULT_STATUS_BROADCAST_INTERVAL;
+    uint8_t status_sequence_number_ = 0;
 
     // Message building and sending
     void SendManagementMessage(const CdmpManagementMessage& msg);
@@ -82,9 +84,10 @@ private:
 
 public:
     CdmpService(
+        std::shared_ptr<ITimeService> time_service,
         std::shared_ptr<Canbus> canbus,
         CdmpDeviceType device_type,
-        uint32_t unique_identifier = 0,
+        uint32_t unique_identifier,
         uint32_t base_can_id = CdmpCanIdManager::DEFAULT_BASE_CAN_ID);
     ~CdmpService();
 
@@ -100,17 +103,24 @@ public:
     void SetDeviceType(CdmpDeviceType device_type);
 
     // Direct command sending
-    uint8_t SendCommand(uint8_t target_device_id, CdmpCommandCode command_code,
-                       const std::vector<uint8_t>& parameters = {});
-    bool SendCommandAndWaitForResponse(uint8_t target_device_id, CdmpCommandCode command_code,
-                                      const std::vector<uint8_t>& parameters,
-                                      CdmpCommandResponse& response, uint64_t timeout = K_SECONDS(1).ticks);
+    uint8_t SendCommand(
+        uint8_t target_device_id,
+        CdmpCommandCode command_code,
+        const std::vector<uint8_t>& parameters = {});
+    bool SendCommandAndWaitForResponse(
+        uint8_t target_device_id,
+        CdmpCommandCode command_code,
+        const std::vector<uint8_t>& parameters,
+        CdmpCommandResponse& response,
+        uint64_t timeout = K_SECONDS(1).ticks);
 
     // Configuration management
-    bool ReadRemoteConfig(uint8_t target_device_id, CdmpConfigType config_type,
-                         std::vector<uint8_t>& config_data);
-    bool WriteRemoteConfig(uint8_t target_device_id, CdmpConfigType config_type,
-                          const std::vector<uint8_t>& config_data);
+    bool ReadRemoteConfig(uint8_t target_device_id,
+        CdmpConfigType config_type,
+        std::vector<uint8_t>& config_data);
+    bool WriteRemoteConfig(uint8_t target_device_id,
+        CdmpConfigType config_type,
+        const std::vector<uint8_t>& config_data);
     uint32_t GetRemoteConfigCrc(uint8_t target_device_id, CdmpConfigType config_type);
 
     // Network information
@@ -126,7 +136,6 @@ public:
     // Constants
     static constexpr uint64_t DEFAULT_HEARTBEAT_INTERVAL = K_SECONDS(3).ticks;
     static constexpr uint64_t DEFAULT_STATUS_BROADCAST_INTERVAL = K_SECONDS(1).ticks;
-    static constexpr uint32_t DEFAULT_UNIQUE_IDENTIFIER = 0; // Will be generated if 0
 };
 
 } // namespace eerie_leap::subsys::cdmp::services

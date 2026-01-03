@@ -151,6 +151,8 @@ void Canbus::SendFrame(uint32_t frame_id, std::span<const uint8_t> frame_data) {
         SendFrameCallback,
         nullptr);
 
+    LOG_DBG("Frame sent: ID=0x%08X, DLC=%d", frame_id, can_bytes_to_dlc(frame_data.size()));
+
     if(res != 0) {
         // LOG_ERR("Failed to send frame [%d].", res);
         return;
@@ -163,6 +165,8 @@ void Canbus::SendFrameCallback(const device* dev, int error, void* user_data) {
 }
 
 void Canbus::CanFrameReceivedCallback(const device *dev, can_frame *frame, void *user_data) {
+    LOG_DBG("Frame received: ID=0x%08X, DLC=%d", frame->id, can_bytes_to_dlc(frame->dlc));
+
     auto* canbus = static_cast<Canbus*>(user_data);
 
     CanFrame can_frame = {
@@ -202,6 +206,8 @@ int Canbus::RegisterFrameReceivedHandler(uint32_t can_id, CanFrameHandler handle
         handlers_.at(can_id).erase(handler_id);
         return -1;
     }
+
+    LOG_DBG("Frame received handler registered for ID=0x%08X", can_id);
 
     return handler_id;
 }

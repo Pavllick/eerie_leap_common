@@ -4,8 +4,10 @@
 
 #include "subsys/canbus/canbus.h"
 
-#include "../models/cdmp_device.h"
+#include "../utilities/cdmp_can_id_manager.h"
 #include "../utilities/cdmp_status_machine.h"
+#include "../models/cdmp_device.h"
+#include "../models/cdmp_message.h"
 
 #include "i_cdmp_canbus_service.h"
 
@@ -23,16 +25,14 @@ protected:
     std::shared_ptr<Canbus> canbus_;
     std::shared_ptr<CdmpCanIdManager> can_id_manager_;
     std::shared_ptr<CdmpDevice> device_;
-    std::shared_ptr<CdmpStatusMachine> status_machine_;
 
-    virtual void OnDeviceStatusChanged(CdmpDeviceStatus old_state, CdmpDeviceStatus new_state);
+    virtual void OnDeviceStatusChanged(CdmpDeviceStatus old_status, CdmpDeviceStatus new_status);
 
 public:
     CdmpCanbusServiceBase(
         std::shared_ptr<Canbus> canbus,
         std::shared_ptr<CdmpCanIdManager> can_id_manager,
-        std::shared_ptr<CdmpDevice> device,
-        std::shared_ptr<CdmpStatusMachine> status_machine);
+        std::shared_ptr<CdmpDevice> device);
 
     virtual ~CdmpCanbusServiceBase();
 };

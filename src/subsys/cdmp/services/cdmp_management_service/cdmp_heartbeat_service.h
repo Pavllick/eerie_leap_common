@@ -1,32 +1,32 @@
 #pragma once
 
-#include "../../models/cdmp_message.h"
-
-#include "../cdmp_canbus_service_base.h"
+#include <span>
 
 #include <zephyr/kernel.h>
 
+#include "../cdmp_canbus_service_base.h"
+#include "cdmp_network_service.h"
 namespace eerie_leap::subsys::cdmp::services::cdmp_management_service {
 
 class CdmpHeartbeatService : public CdmpCanbusServiceBase {
 private:
-    // Heartbeat configuration
-    uint64_t heartbeat_interval_;
-    uint64_t last_heartbeat_sent_;
-    uint8_t heartbeat_sequence_number_;
-    bool heartbeat_enabled_;
+    std::shared_ptr<CdmpNetworkService> network_service_;
 
-    // CAN handlers for heartbeat-related messages
-    int heartbeat_handler_id_;
+    // Heartbeat configuration
+    uint64_t heartbeat_interval_ = DEFAULT_HEARTBEAT_INTERVAL;
+    uint64_t last_heartbeat_sent_ = 0;
+    uint8_t heartbeat_sequence_number_ = 0;
+    bool heartbeat_enabled_ = true;
 
     void SendHeartbeat();
+    void ProcessHeartbeatFrame(std::span<const uint8_t> frame_data);
 
 public:
     CdmpHeartbeatService(
         std::shared_ptr<Canbus> canbus,
         std::shared_ptr<CdmpCanIdManager> can_id_manager,
         std::shared_ptr<CdmpDevice> device,
-        std::shared_ptr<CdmpStatusMachine> status_machine);
+        std::shared_ptr<CdmpNetworkService> network_service);
 
     ~CdmpHeartbeatService();
 
