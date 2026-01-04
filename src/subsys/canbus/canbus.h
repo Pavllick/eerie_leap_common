@@ -13,14 +13,18 @@
 #include <zephyr/drivers/can.h>
 #include <zephyr/sys/atomic.h>
 
+#include <subsys/threading/thread.h>
+
 #include "canbus_type.h"
 #include "can_frame.h"
 
 namespace eerie_leap::subsys::canbus {
 
+using namespace eerie_leap::subsys::threading;
+
 using CanFrameHandler = std::function<void (const CanFrame&)>;
 
-class Canbus {
+class Canbus : public IThread {
 private:
     const device *canbus_dev_;
     std::unordered_map<uint32_t, can_filter> can_filters_;
@@ -40,10 +44,9 @@ private:
     static constexpr uint32_t MIN_FRAMES_FOR_DETECTION = 3;
 
     static constexpr int k_stack_size_ = 2048;
-    static constexpr int k_priority_ = K_PRIO_PREEMPT(6);
+    static constexpr int k_priority_ = 6;
 
-    k_thread_stack_t* stack_area_ = nullptr;
-    k_thread thread_data_;
+    std::unique_ptr<Thread> activity_monitor_thread_;
 
     // Ordered by most common first
     static constexpr std::array<uint32_t, 9> classical_can_supported_bitrates_ = {
@@ -56,7 +59,7 @@ private:
         2000000, 4000000, 5000000, 8000000
     };
 
-    void ActivityMonitorThreadEntry();
+    void ThreadEntry() override;
 
     bool StartActivityMonitoring();
     void StopActivityMonitoring();

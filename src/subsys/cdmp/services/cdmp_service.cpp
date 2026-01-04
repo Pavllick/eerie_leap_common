@@ -49,22 +49,18 @@ CdmpService::CdmpService(
     canbus_services_.emplace_back(std::make_unique<CdmpStateService>(
         canbus_, can_id_manager_, device_));
     // TODO: Add IsoTp Service
+
+    thread_ = std::make_unique<Thread>(
+        "cdmp_service_thread", this, k_stack_size_, k_priority_);
 }
 
 CdmpService::~CdmpService() {
     Stop();
 }
 
-bool CdmpService::Initialize() {
-    work_queue_->Initialize();
+void CdmpService::ThreadEntry() {
+    LOG_INF("CDMP service started");
 
-    LOG_INF("CDMP service initialized with device type %d, unique ID 0x%08X",
-        std::to_underlying(device_type_), unique_identifier_);
-
-    return true;
-}
-
-void CdmpService::Start() {
     for(auto& service : canbus_services_)
         service->Start();
 
@@ -73,12 +69,28 @@ void CdmpService::Start() {
 
     is_running_ = true;
 
-    LOG_INF("CDMP service started");
+    k_sleep(K_FOREVER);
+}
+
+bool CdmpService::Initialize() {
+    work_queue_->Initialize();
+    thread_->Initialize();
+
+    LOG_INF("CDMP service initialized with device type %d, unique ID 0x%08X",
+        std::to_underlying(device_type_), unique_identifier_);
+
+    return true;
+}
+
+void CdmpService::Start() {
+    thread_->Start();
 }
 
 void CdmpService::Stop() {
     for(auto& service : canbus_services_)
         service->Stop();
+
+    thread_->Join();
 
     if(device_)
         device_->SetStatus(CdmpDeviceStatus::OFFLINE);

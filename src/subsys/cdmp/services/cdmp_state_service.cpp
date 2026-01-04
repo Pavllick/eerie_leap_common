@@ -1,6 +1,5 @@
 #include "cdmp_state_service.h"
 #include <zephyr/logging/log.h>
-#include <zephyr/sys/timeutil.h>
 
 LOG_MODULE_REGISTER(cdmp_state_service, LOG_LEVEL_INF);
 

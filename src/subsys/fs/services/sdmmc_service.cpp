@@ -15,11 +15,14 @@ namespace eerie_leap::subsys::fs::services {
 LOG_MODULE_REGISTER(sdmmc_service_logger);
 
 SdmmcService::SdmmcService(fs_mount_t mountpoint, const char* disk_name)
-    : FsService(mountpoint), disk_name_(disk_name), monitor_running_(ATOMIC_INIT(0)) { }
+    : FsService(mountpoint), disk_name_(disk_name), monitor_running_(ATOMIC_INIT(0)) {
+
+    thread_ = std::make_unique<Thread>(
+        "sd_monitor", this, k_stack_size_, k_priority_, true);
+}
 
 SdmmcService::~SdmmcService() {
-    k_thread_join(&thread_data_, K_FOREVER);
-    k_thread_stack_free(stack_area_);
+    thread_->Join();
 }
 
 bool SdmmcService::Initialize() {
@@ -77,7 +80,7 @@ void SdmmcService::SdMonitorHandler() {
 #endif // CONFIG_LOG_BACKEND_FS
 }
 
-void SdmmcService::SdMonitorThreadEntry() {
+void SdmmcService::ThreadEntry() {
     while(atomic_get(&monitor_running_)) {
         SdMonitorHandler();
 
@@ -90,19 +93,8 @@ int SdmmcService::SdMonitorStart() {
     k_sem_init(&sd_monitor_stop_sem_, 0, 1);
     atomic_set(&monitor_running_, 1);
 
-    if(!stack_area_)
-        stack_area_ = k_thread_stack_alloc(k_stack_size_, 0);
-
-    k_thread_create(
-        &thread_data_,
-        stack_area_,
-        k_stack_size_,
-        [](void* instance, void* p2, void* p3) {
-            static_cast<SdmmcService*>(instance)->SdMonitorThreadEntry(); },
-        this, nullptr, nullptr,
-        k_priority_, 0, K_NO_WAIT);
-
-    k_thread_name_set(&thread_data_, "sd_monitor");
+    thread_->Initialize();
+    thread_->Start();
 
     LOG_INF("SD card monitoring started.");
 
@@ -115,7 +107,7 @@ int SdmmcService::SdMonitorStop() {
 
     atomic_set(&monitor_running_, 0);
     k_sem_give(&sd_monitor_stop_sem_);
-    k_thread_join(&thread_data_, K_FOREVER);
+    thread_->Join();
 
     LOG_INF("SD card monitoring stopped.");
 

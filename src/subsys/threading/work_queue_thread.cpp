@@ -3,7 +3,7 @@
 namespace eerie_leap::subsys::threading {
 
 WorkQueueThread::WorkQueueThread(std::string name, int stack_size, int priority, bool is_cooperative)
-    : ThreadBase(stack_size, priority, is_cooperative), name_(std::move(name)) {}
+    : ThreadBase(std::move(name), stack_size, priority, is_cooperative) {}
 
 WorkQueueThread::~WorkQueueThread() {
     k_work_queue_stop(&work_q_, K_FOREVER);
@@ -37,4 +37,5 @@ bool WorkQueueThread::CancelTask(WorkQueueTaskBase& task) {
 bool WorkQueueThread::FlushTask(WorkQueueTaskBase& task) {
     return k_work_flush_delayable(&task.work, &sync_);
 }
+
 } // namespace eerie_leap::subsys::threading

@@ -8,6 +8,7 @@
 
 #include "subsys/time/i_time_service.h"
 #include "subsys/canbus/canbus.h"
+#include <subsys/threading/thread.h>
 #include "subsys/threading/work_queue_thread.h"
 
 #include "../utilities/cdmp_can_id_manager.h"
@@ -28,8 +29,12 @@ using namespace eerie_leap::subsys::cdmp::utilities;
 using CommandHandler = std::function<void(const CdmpCommandMessage&, uint8_t transaction_id)>;
 using CapabilityDataGenerator = std::function<std::vector<uint8_t>()>;
 
-class CdmpService {
+class CdmpService : public IThread {
 private:
+    static constexpr int k_stack_size_ = 4096;
+    static constexpr int k_priority_ = 5;
+    std::unique_ptr<Thread> thread_;
+
     // Core components
     std::shared_ptr<CdmpDevice> device_;
     std::shared_ptr<CdmpWorkQueue> work_queue_;
@@ -62,6 +67,8 @@ private:
     uint64_t last_status_broadcast_ = 0;
     uint64_t status_broadcast_interval_ = DEFAULT_STATUS_BROADCAST_INTERVAL;
     uint8_t status_sequence_number_ = 0;
+
+    void ThreadEntry() override;
 
     // Message building and sending
     void SendManagementMessage(const CdmpManagementMessage& msg);

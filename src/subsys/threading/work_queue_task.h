@@ -2,7 +2,6 @@
 
 #include <functional>
 #include <memory>
-#include <typeindex>
 
 #include <zephyr/kernel.h>
 

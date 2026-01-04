@@ -6,6 +6,7 @@
 #include <zephyr/logging/log.h>
 
 #include "canbus.h"
+#include "zephyr/drivers/can.h"
 
 LOG_MODULE_REGISTER(canbus_logger);
 
@@ -26,6 +27,9 @@ Canbus::Canbus(
 
     if(type_ == CanbusType::CANFD && data_bitrate_ == 0)
         data_bitrate_ = bitrate_;
+
+    activity_monitor_thread_ = std::make_unique<Thread>(
+        "can_activity_monitor", this, k_stack_size_, k_priority_);
 }
 
 Canbus::~Canbus() {
@@ -33,8 +37,8 @@ Canbus::~Canbus() {
     if(canbus_dev_ != nullptr && is_initialized_)
         can_stop(canbus_dev_);
 
-    if(stack_area_)
-        k_thread_stack_free(stack_area_);
+    if(activity_monitor_thread_)
+        activity_monitor_thread_->Join();
 }
 
 bool Canbus::Initialize() {
@@ -50,7 +54,7 @@ bool Canbus::Initialize() {
         return false;
     }
 
-    can_mode_t can_mode = CAN_MODE_NORMAL;
+    can_mode_t can_mode = CAN_MODE_LOOPBACK;
     if(type_ == CanbusType::CANFD && (capabilities & CAN_MODE_FD))
         can_mode = CAN_MODE_FD;
     else
@@ -65,7 +69,7 @@ bool Canbus::Initialize() {
     if(bitrate_ == 0) {
         LOG_INF("Auto-bitrate mode enabled - will detect on bus activity");
 
-        stack_area_ = k_thread_stack_alloc(k_stack_size_, 0);
+        activity_monitor_thread_->Initialize();
         if(!StartActivityMonitoring()) {
             LOG_ERR("Failed to start activity monitoring.");
             return false;
@@ -269,23 +273,10 @@ bool Canbus::RemoveFrameReceivedHandler(uint32_t can_id, int handler_id) {
 }
 
 bool Canbus::StartActivityMonitoring() {
-    if(!stack_area_) {
-        LOG_ERR("Activity monitor stack not allocated.");
-        return false;
-    }
-
     atomic_set(&auto_detect_running_, 1);
 
-    k_thread_create(
-        &thread_data_,
-        stack_area_,
-        k_stack_size_,
-        [](void* instance, void* p2, void* p3) {
-            static_cast<Canbus*>(instance)->ActivityMonitorThreadEntry(); },
-        this, nullptr, nullptr,
-        k_priority_, 0, K_NO_WAIT);
-
-    k_thread_name_set(&thread_data_, "can_activity_monitor");
+    activity_monitor_thread_->Join();
+    activity_monitor_thread_->Start();
 
     return true;
 }
@@ -293,11 +284,12 @@ bool Canbus::StartActivityMonitoring() {
 void Canbus::StopActivityMonitoring() {
     if(atomic_get(&auto_detect_running_)) {
         atomic_set(&auto_detect_running_, 0);
-        k_thread_join(&thread_data_, K_FOREVER);
+
+        activity_monitor_thread_->Join();
     }
 }
 
-void Canbus::ActivityMonitorThreadEntry() {
+void Canbus::ThreadEntry() {
     LOG_INF("CANBus auto-detection started.");
 
     while(atomic_get(&auto_detect_running_) && !bitrate_detected_) {

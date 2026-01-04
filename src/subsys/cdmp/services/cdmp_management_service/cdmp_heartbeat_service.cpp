@@ -1,5 +1,4 @@
 #include <zephyr/logging/log.h>
-#include <zephyr/sys/timeutil.h>
 
 #include "cdmp_heartbeat_service.h"
 

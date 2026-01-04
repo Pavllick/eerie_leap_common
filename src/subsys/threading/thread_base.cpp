@@ -2,9 +2,11 @@
 
 namespace eerie_leap::subsys::threading {
 
-ThreadBase::ThreadBase(int stack_size, int priority, bool is_cooperative) : k_stack_size_(stack_size) {
-    k_priority_ = is_cooperative ? K_PRIO_COOP(priority) : K_PRIO_PREEMPT(priority);
-}
+ThreadBase::ThreadBase(std::string name, int stack_size, int priority, bool is_cooperative)
+    : k_stack_size_(stack_size),
+      k_priority_(is_cooperative ? K_PRIO_COOP(priority) : K_PRIO_PREEMPT(priority)),
+      stack_area_(nullptr),
+      name_(std::move(name)) {}
 
 ThreadBase::~ThreadBase() {
     if(stack_area_ == nullptr)

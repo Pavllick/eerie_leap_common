@@ -11,7 +11,6 @@ namespace eerie_leap::subsys::threading {
 class WorkQueueThread : public ThreadBase {
 private:
     k_work_q work_q_;
-    std::string name_;
     k_work_sync sync_;
 
     static void TaskHandler(k_work* work);

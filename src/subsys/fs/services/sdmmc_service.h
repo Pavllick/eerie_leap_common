@@ -1,5 +1,6 @@
 #pragma once
 
+#include <memory>
 #include <functional>
 
 #include <zephyr/kernel.h>
@@ -7,26 +8,28 @@
 #include <zephyr/fs/fs.h>
 #include <zephyr/sys/atomic.h>
 
+#include "subsys/threading/thread.h"
+
 #include "fs_service.h"
 
 namespace eerie_leap::subsys::fs::services {
 
-class SdmmcService : public FsService {
+using namespace subsys::threading;
+
+class SdmmcService : public FsService, public IThread {
 private:
+    static constexpr int k_stack_size_ = CONFIG_EERIE_LEAP_FS_SD_THREAD_STACK_SIZE;
+    static constexpr int k_priority_ = 2;
+    std::unique_ptr<Thread> thread_;
+
     const char* disk_name_;
     bool sd_card_present_ = false;
     k_sem sd_monitor_stop_sem_;
     atomic_t monitor_running_;
 
-    static constexpr int k_stack_size_ = CONFIG_EERIE_LEAP_FS_SD_THREAD_STACK_SIZE;
-    static constexpr int k_priority_ = K_PRIO_COOP(2);
-
-    k_thread_stack_t* stack_area_;
-    k_thread thread_data_;
-
     std::function<bool()> _is_sd_card_present_handler;
 
-    void SdMonitorThreadEntry();
+    void ThreadEntry() override;
 
     static bool IsSdCardAttached(const char* disk_name);
     void SdMonitorHandler();
