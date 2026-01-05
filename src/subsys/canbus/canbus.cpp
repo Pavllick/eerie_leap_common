@@ -155,12 +155,12 @@ void Canbus::SendFrame(uint32_t frame_id, std::span<const uint8_t> frame_data) {
         SendFrameCallback,
         nullptr);
 
-    LOG_DBG("Frame sent: ID=0x%08X, DLC=%d", frame_id, can_bytes_to_dlc(frame_data.size()));
-
     if(res != 0) {
         // LOG_ERR("Failed to send frame [%d].", res);
         return;
     }
+
+    LOG_DBG("Frame sent: ID=0x%08X, DLC=%d", frame_id, can_bytes_to_dlc(frame_data.size()));
 }
 
 void Canbus::SendFrameCallback(const device* dev, int error, void* user_data) {

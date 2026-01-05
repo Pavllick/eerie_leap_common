@@ -22,14 +22,55 @@ public:
 // Templated derived class that stores the actual type
 template<typename T>
 class WorkQueueTask : public WorkQueueTaskBase {
+private:
+    std::unique_ptr<T> user_data_;
+    T* user_data_ptr_;
+
 public:
     using Handler = std::function<WorkQueueTaskResult(T*)>;
 
     Handler handler;
-    std::unique_ptr<T> user_data;
+
+    void SetUserData(T* user_data) {
+        user_data_ptr_ = user_data;
+    }
+
+    void SetUserData(std::unique_ptr<T> user_data) {
+        user_data_ = std::move(user_data);
+        SetUserData(user_data_.get());
+    }
+
+    T* GetUserdata() const {
+        return user_data_ptr_;
+    }
 
     WorkQueueTaskResult Execute() override {
-        return handler(user_data.get());
+        return handler(user_data_ptr_);
+    }
+};
+
+class WorkQueueRunnerTask : public WorkQueueTaskBase {
+private:
+    std::vector<std::unique_ptr<WorkQueueRunnerTask>>& runner_tasks_;
+
+public:
+    using Handler = std::function<void()>;
+
+    explicit WorkQueueRunnerTask(std::vector<std::unique_ptr<WorkQueueRunnerTask>>& runner_tasks)
+        : runner_tasks_(runner_tasks) {}
+
+    Handler handler;
+
+    WorkQueueTaskResult Execute() override {
+        handler();
+
+        return {
+            .reschedule = false
+        };
+    }
+
+    std::vector<std::unique_ptr<WorkQueueRunnerTask>>& GetRunnerTasks() {
+        return runner_tasks_;
     }
 };
 

@@ -217,18 +217,18 @@ bool Cfb::Clear(bool clear_display) {
 }
 
 void Cfb::SetAnimationHandler(std::function<void()> handler, uint32_t frame_rate) {
-    work_queue_task_->user_data->animation_handler = handler;
-    work_queue_task_->user_data->frame_rate = frame_rate;
+    work_queue_task_->GetUserdata()->animation_handler = handler;
+    work_queue_task_->GetUserdata()->frame_rate = frame_rate;
 }
 
 void Cfb::StartAnimation() {
-    atomic_set(&work_queue_task_->user_data->is_animation_running_, 1);
+    atomic_set(&work_queue_task_->GetUserdata()->is_animation_running_, 1);
     work_queue_thread_->ScheduleTask(*work_queue_task_);
 }
 
 void Cfb::StopAnimation() {
     work_queue_thread_->CancelTask(*work_queue_task_);
-    atomic_set(&work_queue_task_->user_data->is_animation_running_, 0);
+    atomic_set(&work_queue_task_->GetUserdata()->is_animation_running_, 0);
 }
 
 void Cfb::PrintScreenInfo() {

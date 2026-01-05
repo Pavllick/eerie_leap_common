@@ -13,7 +13,10 @@ private:
     k_work_q work_q_;
     k_work_sync sync_;
 
+    std::vector<std::unique_ptr<WorkQueueRunnerTask>> runner_tasks_;
+
     static void TaskHandler(k_work* work);
+    static void RunnerTaskHandler(k_work* work);
 
 public:
     WorkQueueThread(std::string name, int stack_size, int priority, bool is_cooperative = false);
@@ -27,18 +30,29 @@ public:
         WorkQueueTask<T> task;
         task.work_q = &work_q_;
         task.handler = handler;
-        task.user_data = std::move(user_data);
+        task.SetUserData(std::move(user_data));
         k_work_init_delayable(&task.work, TaskHandler);
 
         return task;
     }
 
-    void ScheduleTask(WorkQueueTaskBase& task) {
-        k_work_schedule_for_queue(&work_q_, &task.work, K_NO_WAIT);
+    template<typename T>
+    WorkQueueTask<T> CreateTask(const WorkQueueTask<T>::Handler& handler, T* user_data) {
+        WorkQueueTask<T> task;
+        task.work_q = &work_q_;
+        task.handler = handler;
+        task.SetUserData(user_data);
+        k_work_init_delayable(&task.work, TaskHandler);
+
+        return task;
     }
+
+    void ScheduleTask(WorkQueueTaskBase& task);
 
     bool CancelTask(WorkQueueTaskBase& task);
     bool FlushTask(WorkQueueTaskBase& task);
+
+    void Run(const WorkQueueRunnerTask::Handler& handler);
 };
 
 } // namespace eerie_leap::subsys::threading
