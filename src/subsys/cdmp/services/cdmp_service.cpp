@@ -41,7 +41,7 @@ CdmpService::CdmpService(
     work_queue_ = std::make_shared<CdmpWorkQueue>();
 
     canbus_services_.emplace_back(std::make_unique<CdmpManagementService>(
-        canbus_, can_id_manager_, device_));
+        canbus_, can_id_manager_, device_, work_queue_));
     canbus_services_.emplace_back(std::make_unique<CdmpStatusService>(
         canbus_, can_id_manager_, device_));
     canbus_services_.emplace_back(std::make_unique<CdmpCommandService>(

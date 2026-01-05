@@ -1,15 +1,23 @@
-#include "cdmp_network_service.h"
 #include <zephyr/logging/log.h>
+
+#include "../../types/cdmp_types.h"
+#include "subsys/cdmp/utilities/cdmp_status_machine.h"
+
+#include "cdmp_network_service.h"
 
 LOG_MODULE_REGISTER(cdmp_network_service, LOG_LEVEL_INF);
 
 namespace eerie_leap::subsys::cdmp::services {
 
+using namespace eerie_leap::subsys::cdmp::types;
+
 CdmpNetworkService::CdmpNetworkService(
     std::shared_ptr<Canbus> canbus,
     std::shared_ptr<CdmpCanIdManager> can_id_manager,
-    std::shared_ptr<CdmpDevice> device)
-    : CdmpCanbusServiceBase(std::move(canbus), std::move(can_id_manager), std::move(device)) {}
+    std::shared_ptr<CdmpDevice> device,
+    std::shared_ptr<CdmpWorkQueue> work_queue)
+        : CdmpCanbusServiceBase(std::move(canbus), std::move(can_id_manager), std::move(device)),
+        work_queue_(work_queue) {}
 
 CdmpNetworkService::~CdmpNetworkService() {
     Stop();
@@ -27,23 +35,23 @@ void CdmpNetworkService::Stop() {
 void CdmpNetworkService::OnDeviceStatusChanged(CdmpDeviceStatus old_status, CdmpDeviceStatus new_status) {
     switch(new_status) {
         case CdmpDeviceStatus::INIT:
-            SendDiscoveryRequest();
+            work_queue_->Run([this]() { StartInitialization(); });
             break;
 
         case CdmpDeviceStatus::CLAIMING:
-            SendIdClaim();
+            work_queue_->Run([this]() { SendIdClaim(); });
             break;
 
         case CdmpDeviceStatus::ONLINE:
-            // LOG_INF("Device %d is now online", device_->GetDeviceId());
+            LOG_INF("Device is now online");
             break;
 
         case CdmpDeviceStatus::VERSION_MISMATCH:
-            // LOG_ERR("Protocol version mismatch detected");
+            LOG_ERR("Protocol version mismatch detected");
             break;
 
         case CdmpDeviceStatus::ERROR:
-            // LOG_ERR("Device entered error state");
+            LOG_ERR("Device entered error state");
             break;
 
         default:
@@ -51,7 +59,7 @@ void CdmpNetworkService::OnDeviceStatusChanged(CdmpDeviceStatus old_status, Cdmp
     }
 }
 
-void CdmpNetworkService::ProcessFrame(std::span<const uint8_t> frame_data) {
+void CdmpNetworkService::ProcessFrame(uint32_t frame_id, std::span<const uint8_t> frame_data) {
     CdmpManagementMessageType message_type = static_cast<CdmpManagementMessageType>(frame_data[0]);
 
     switch(message_type) {
@@ -62,24 +70,42 @@ void CdmpNetworkService::ProcessFrame(std::span<const uint8_t> frame_data) {
 
         case CdmpManagementMessageType::DISCOVERY_RESPONSE:
             LOG_INF("Received discovery response");
-            ProcessDiscoveryFrame(frame_data);
+            ProcessDiscoveryResponseFrame(frame_data);
             break;
 
         case CdmpManagementMessageType::ID_CLAIM:
-            // ProcessIdClaimFrame(frame_data);
+            ProcessIdClaimRequestFrame(frame_data);
             break;
 
         case CdmpManagementMessageType::ID_CLAIM_RESPONSE:
-            // ProcessIdClaimResponseFrame(frame_data);
+            ProcessIdClaimResponseFrame(frame_data);
             break;
     }
 }
 
-void CdmpNetworkService::ProcessDiscoveryFrame(std::span<const uint8_t> frame_data) {
+void CdmpNetworkService::StartInitialization() {
+    discovery_response_received_ = false;
+
+    for(const auto& backoff : CdmpTimeouts::RETRY_BACKOFFS_MS) {
+        SendDiscoveryRequest();
+        k_msleep(200);
+
+        if(discovery_response_received_)
+            break;
+
+        LOG_DBG("Retry discovery attempt with backoff: %d ms", backoff);
+    }
+
+    device_->SetStatus(CdmpDeviceStatus::CLAIMING);
+}
+
+void CdmpNetworkService::ProcessDiscoveryResponseFrame(std::span<const uint8_t> frame_data) {
     try {
         CdmpDiscoveryResponseMessage discovery = CdmpDiscoveryResponseMessage::FromCanFrame(frame_data);
         UpdateDeviceFromDiscovery(discovery);
         LOG_DBG("Processed discovery frame");
+
+        discovery_response_received_ = true;
     } catch (const std::exception& e) {
         LOG_ERR("Error processing discovery frame: %s", e.what());
     }
@@ -109,17 +135,112 @@ void CdmpNetworkService::SendDiscoveryResponse() {
 }
 
 void CdmpNetworkService::SendIdClaim() {
-    CdmpIdClaimMessage message = {};
-    message.claimed_device_id = device_->GetDeviceId();
-    message.unique_identifier = device_->GetUniqueIdentifier();
-    message.device_type = device_->GetDeviceType();
-    message.protocol_version = device_->GetProtocolVersion();
+    try {
+        claiming_device_id_ = GetLowestAvailableId(claiming_device_id_);
+    } catch (const std::exception& e) {
+        LOG_ERR("Error getting lowest available ID: %s", e.what());
+        device_->SetStatus(CdmpDeviceStatus::ERROR);
+        claiming_device_id_ = 0;
 
-    auto frame_data = message.ToCanFrame();
-    uint32_t frame_id = can_id_manager_->GetManagementCanId();
-    canbus_->SendFrame(frame_id, frame_data);
+        return;
+    }
 
-    LOG_INF("Sent ID claim for device %d", message.claimed_device_id);
+    for(int i = 0; i < ID_CLAIM_RETRY_COUNT; ++i) {
+        CdmpIdClaimMessage message = {};
+        message.claiming_device_id = claiming_device_id_;
+        message.unique_identifier = device_->GetUniqueIdentifier();
+        message.device_type = device_->GetDeviceType();
+        message.protocol_version = device_->GetProtocolVersion();
+
+        auto frame_data = message.ToCanFrame();
+        uint32_t frame_id = can_id_manager_->GetManagementCanId();
+        canbus_->SendFrame(frame_id, frame_data);
+        LOG_INF("Sent ID claim for device %d", message.claiming_device_id);
+
+        k_msleep(ID_CLAIM_RESPONSE_TIMEOUT_MS);
+
+        if(id_claim_result_.has_value() && id_claim_result_.value() == CdmpIdClaimResult::VERSION_INCOMPATIBLE) {
+            device_->SetStatus(CdmpDeviceStatus::VERSION_MISMATCH);
+            claiming_device_id_ = 0;
+            return;
+        }
+
+        if(id_claim_result_.has_value() && id_claim_result_.value() == CdmpIdClaimResult::ACCEPT) {
+            device_->SetDeviceId(claiming_device_id_);
+            device_->SetStatus(CdmpDeviceStatus::ONLINE);
+            break;
+        }
+    }
+
+    // First or only device on the network, assign the ID
+    if(!id_claim_result_.has_value()) {
+        device_->SetDeviceId(claiming_device_id_);
+        device_->SetStatus(CdmpDeviceStatus::ONLINE);
+    } else if(id_claim_result_.has_value() && id_claim_result_.value() == CdmpIdClaimResult::REJECT) {
+        LOG_ERR("All ID claims were rejected.");
+        device_->SetStatus(CdmpDeviceStatus::ERROR);
+    }
+
+    claiming_device_id_ = 0;
+}
+
+void CdmpNetworkService::ProcessIdClaimRequestFrame(std::span<const uint8_t> frame_data) {
+    try {
+        if(!device_->IsOnline())
+            return;
+
+        CdmpIdClaimMessage id_claim = CdmpIdClaimMessage::FromCanFrame(frame_data);
+        LOG_INF("Received ID claim from device %d", id_claim.claiming_device_id);
+
+        if(device_->GetDeviceId() == lowest_id_on_network_
+           && id_claim.protocol_version != device_->GetProtocolVersion()) {
+
+            CdmpIdClaimResponseMessage message = {};
+            message.responding_device_id = device_->GetDeviceId();
+            message.claiming_device_id = id_claim.claiming_device_id;
+            message.result = CdmpIdClaimResult::VERSION_INCOMPATIBLE;
+
+            auto frame_data = message.ToCanFrame();
+            uint32_t response_id = can_id_manager_->GetManagementCanId();
+            canbus_->SendFrame(response_id, frame_data);
+
+            return;
+        }
+
+        if(device_->GetDeviceId() == id_claim.claiming_device_id) {
+            CdmpIdClaimResponseMessage message = {};
+            message.responding_device_id = device_->GetDeviceId();
+            message.claiming_device_id = id_claim.claiming_device_id;
+            message.result = CdmpIdClaimResult::REJECT;
+
+            auto frame_data = message.ToCanFrame();
+            uint32_t response_id = can_id_manager_->GetManagementCanId();
+            canbus_->SendFrame(response_id, frame_data);
+
+            return;
+        }
+    } catch (const std::exception& e) {
+        LOG_ERR("Error processing ID claim frame: %s", e.what());
+    }
+}
+
+void CdmpNetworkService::ProcessIdClaimResponseFrame(std::span<const uint8_t> frame_data) {
+    try {
+        CdmpIdClaimResponseMessage response = CdmpIdClaimResponseMessage::FromCanFrame(frame_data);
+
+        if(device_->IsOnline())
+            return;
+
+        if(response.claiming_device_id != claiming_device_id_)
+            return;
+
+        LOG_INF("Received ID claim response from device %d for device %d with result %d",
+            response.responding_device_id, response.claiming_device_id, static_cast<int>(response.result));
+
+        id_claim_result_ = response.result;
+    } catch (const std::exception& e) {
+        LOG_ERR("Error processing ID claim response frame: %s", e.what());
+    }
 }
 
 void CdmpNetworkService::UpdateDeviceFromDiscovery(const CdmpDiscoveryResponseMessage& discovery) {
@@ -150,6 +271,9 @@ void CdmpNetworkService::AddOrUpdateDevice(uint8_t device_id, CdmpDeviceType dev
         auto device = std::make_unique<CdmpDevice>(unique_identifier, device_type, CdmpDeviceStatus::ONLINE);
         device->SetDeviceId(device_id);
         network_devices_.emplace(device_id, std::move(device));
+
+        if(device_id < device_->GetDeviceId())
+            lowest_id_on_network_ = device_id;
 
         LOG_INF("Added new device: ID=%d, Type=%d, UID=0x%08X", device_id, std::to_underlying(device_type), unique_identifier);
     }
@@ -214,6 +338,8 @@ void CdmpNetworkService::ProcessPeriodicTasks() {
 
     // // Remove offline devices
     // RemoveOfflineDevices();
+
+    // Update lowest_id_on_network_
 }
 
 bool CdmpNetworkService::IsDeviceOnline(uint8_t device_id) const {
@@ -236,6 +362,15 @@ void CdmpNetworkService::RemoveOfflineDevices() {
 
     for(auto device_id : offline_device_ids)
         RemoveDevice(device_id);
+}
+
+uint8_t CdmpNetworkService::GetLowestAvailableId(uint8_t after) const {
+    for(uint8_t i = after + 1; i <= 255; ++i) {
+        if(!network_devices_.contains(i))
+            return i;
+    }
+
+    throw std::runtime_error("No available device ID found");
 }
 
 void CdmpNetworkService::PrintNetworkStatus() const {

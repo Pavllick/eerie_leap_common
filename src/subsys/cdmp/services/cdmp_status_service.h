@@ -11,6 +11,8 @@ private:
     void RegisterCanHandlers();
     void UnregisterCanHandlers();
 
+    void ProcessRequestFrame(std::span<const uint8_t> frame_data);
+
 public:
     CdmpStatusService(
         std::shared_ptr<Canbus> canbus,
@@ -21,8 +23,6 @@ public:
 
     void Start() override;
     void Stop() override;
-
-    void ProcessFrame(std::span<const uint8_t> frame_data);
 };
 
 } // namespace eerie_leap::subsys::cdmp::services

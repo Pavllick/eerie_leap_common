@@ -28,7 +28,7 @@ struct CdmpManagementMessage {
 };
 
 struct CdmpDiscoveryRequestMessage {
-    const CdmpManagementMessageType message_type = CdmpManagementMessageType::DISCOVERY_REQUEST;
+    static constexpr CdmpManagementMessageType message_type = CdmpManagementMessageType::DISCOVERY_REQUEST;
 
     static CdmpDiscoveryRequestMessage FromCanFrame(std::span<const uint8_t> frame_data) {
         if(frame_data[0] != static_cast<uint8_t>(CdmpManagementMessageType::DISCOVERY_REQUEST))
@@ -54,7 +54,7 @@ struct CdmpDiscoveryRequestMessage {
 // Byte 7:    Reserved
 
 struct CdmpDiscoveryResponseMessage {
-    const CdmpManagementMessageType message_type = CdmpManagementMessageType::DISCOVERY_RESPONSE;
+    static constexpr CdmpManagementMessageType message_type = CdmpManagementMessageType::DISCOVERY_RESPONSE;
     uint8_t device_id;
     uint32_t unique_identifier;
     CdmpDeviceType device_type;
@@ -90,8 +90,8 @@ struct CdmpDiscoveryResponseMessage {
 };
 
 struct CdmpIdClaimMessage {
-    const CdmpManagementMessageType message_type = CdmpManagementMessageType::ID_CLAIM;
-    uint8_t claimed_device_id;
+    static constexpr CdmpManagementMessageType message_type = CdmpManagementMessageType::ID_CLAIM;
+    uint8_t claiming_device_id;
     uint32_t unique_identifier;
     CdmpDeviceType device_type;
     uint8_t protocol_version;
@@ -101,7 +101,7 @@ struct CdmpIdClaimMessage {
             throw std::invalid_argument("Incorrect message type");
 
         CdmpIdClaimMessage message = {};
-        message.claimed_device_id = frame_data[1];
+        message.claiming_device_id = frame_data[1];
         message.unique_identifier =
             (static_cast<uint32_t>(frame_data[5]) << 24)
             | (static_cast<uint32_t>(frame_data[4]) << 16)
@@ -116,7 +116,7 @@ struct CdmpIdClaimMessage {
     std::vector<uint8_t> ToCanFrame() const {
         std::vector<uint8_t> frame_data = {
             std::to_underlying(message_type),
-            claimed_device_id,
+            claiming_device_id,
             static_cast<uint8_t>(unique_identifier),
             static_cast<uint8_t>(unique_identifier >> 8),
             static_cast<uint8_t>(unique_identifier >> 16),
@@ -128,8 +128,44 @@ struct CdmpIdClaimMessage {
     }
 };
 
+// Byte 0:    Message Type = 0x02 (ID_CLAIM_RESPONSE)
+// Byte 1:    Responding Device ID
+// Byte 2:    Claimed Device ID (being contested)
+// Byte 3:    Result (0x00=Accept, 0x01=Reject/Conflict, 0x02=Version Incompatible)
+// Byte 4-7:  Reserved
+
+struct CdmpIdClaimResponseMessage {
+    static constexpr CdmpManagementMessageType message_type = CdmpManagementMessageType::ID_CLAIM_RESPONSE;
+    uint8_t responding_device_id;
+    uint8_t claiming_device_id;
+    CdmpIdClaimResult result;
+
+    static CdmpIdClaimResponseMessage FromCanFrame(std::span<const uint8_t> frame_data) {
+        if(frame_data[0] != static_cast<uint8_t>(CdmpManagementMessageType::ID_CLAIM_RESPONSE))
+            throw std::invalid_argument("Incorrect message type");
+
+        CdmpIdClaimResponseMessage message = {};
+        message.responding_device_id = frame_data[1];
+        message.claiming_device_id = frame_data[2];
+        message.result = static_cast<CdmpIdClaimResult>(frame_data[3]);
+
+        return message;
+    }
+
+    std::vector<uint8_t> ToCanFrame() const {
+        std::vector<uint8_t> frame_data = {
+            std::to_underlying(message_type),
+            responding_device_id,
+            claiming_device_id,
+            std::to_underlying(result)
+        };
+
+        return frame_data;
+    }
+};
+
 struct CdmpHeartbeatMessage {
-    const CdmpManagementMessageType message_type = CdmpManagementMessageType::HEARTBEAT;
+    static constexpr CdmpManagementMessageType message_type = CdmpManagementMessageType::HEARTBEAT;
     uint8_t device_id;
     CdmpHealthStatus health_status;
     uint8_t sequence_number;

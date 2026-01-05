@@ -35,6 +35,8 @@ public:
         std::shared_ptr<CdmpDevice> device);
 
     virtual ~CdmpCanbusServiceBase();
+
+    void ProcessFrame(uint32_t frame_id, std::span<const uint8_t> frame_data) override;
 };
 
 } // namespace eerie_leap::subsys::cdmp::services

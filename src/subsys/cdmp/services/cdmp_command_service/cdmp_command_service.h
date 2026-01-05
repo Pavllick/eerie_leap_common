@@ -22,7 +22,7 @@ private:
     void RegisterCanHandlers();
     void UnregisterCanHandlers();
 
-    void ProcessFrame(std::span<const uint8_t> frame_data);
+    void ProcessRequestFrame(std::span<const uint8_t> frame_data);
     void ProcessResponseFrame(std::span<const uint8_t> frame_data);
     void SendCommandResponse(const CdmpCommandResponse& response);
 

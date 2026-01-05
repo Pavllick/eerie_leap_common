@@ -34,11 +34,11 @@ void CdmpStateService::RegisterCanHandlers() {
 
     state_change_handler_id_ = canbus_->RegisterFrameReceivedHandler(
         can_id_manager_->GetStateChangeCanId(),
-        [this](const CanFrame& frame) { ProcessStateChangeFrame(frame); });
+        [this](const CanFrame& frame) { ProcessRequestFrame(frame); });
 
     state_change_response_handler_id_ = canbus_->RegisterFrameReceivedHandler(
         can_id_manager_->GetStateChangeResponseCanId(),
-        [this](const CanFrame& frame) { ProcessStateChangeResponseFrame(frame); });
+        [this](const CanFrame& frame) { ProcessResponseFrame(frame); });
 }
 
 void CdmpStateService::UnregisterCanHandlers() {
@@ -55,11 +55,7 @@ void CdmpStateService::UnregisterCanHandlers() {
     }
 }
 
-void CdmpStateService::ProcessFrame(const CanFrame& frame) {
-    // Frame processing is handled by specific handlers registered in Start()
-}
-
-void CdmpStateService::ProcessStateChangeFrame(const CanFrame& frame) {
+void CdmpStateService::ProcessRequestFrame(const CanFrame& frame) {
     try {
         // CdmpStateChangeMessage state_change = CdmpStateChangeMessage::FromCanFrame(frame);
         uint8_t source_device_id = 0; // state_change.source_device_id
@@ -84,7 +80,7 @@ void CdmpStateService::ProcessStateChangeFrame(const CanFrame& frame) {
     }
 }
 
-void CdmpStateService::ProcessStateChangeResponseFrame(const CanFrame& frame) {
+void CdmpStateService::ProcessResponseFrame(const CanFrame& frame) {
     try {
         // CdmpStateChangeResponseMessage response = CdmpStateChangeResponseMessage::FromCanFrame(frame);
         LOG_DBG("Received state change response from device %d, transaction %d, success: %s",

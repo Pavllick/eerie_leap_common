@@ -33,7 +33,7 @@ public:
     void Start() override;
     void Stop() override;
 
-    void ProcessFrame(std::span<const uint8_t> frame_data);
+    void ProcessFrame(uint32_t frame_id, std::span<const uint8_t> frame_data) override;
 
     // Heartbeat management
     void SetHeartbeatInterval(uint64_t interval);

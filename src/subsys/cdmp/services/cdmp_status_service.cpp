@@ -24,7 +24,7 @@ void CdmpStatusService::Stop() {
 void CdmpStatusService::RegisterCanHandlers() {
     canbus_handler_id_ = canbus_->RegisterFrameReceivedHandler(
         can_id_manager_->GetStatusCanId(),
-        [this](const CanFrame& frame) { ProcessFrame(frame.data); });
+        [this](const CanFrame& frame) { ProcessRequestFrame(frame.data); });
 }
 
 void CdmpStatusService::UnregisterCanHandlers() {
@@ -36,7 +36,7 @@ void CdmpStatusService::UnregisterCanHandlers() {
     canbus_handler_id_ = -1;
 }
 
-void CdmpStatusService::ProcessFrame(std::span<const uint8_t> frame_data) {
+void CdmpStatusService::ProcessRequestFrame(std::span<const uint8_t> frame_data) {
     // Process status broadcasts from other devices
     if (frame_data.size() >= 2) {
         uint8_t device_id = frame_data[0];

@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <array>
 
 namespace eerie_leap::subsys::cdmp::types {
 
@@ -99,5 +100,10 @@ enum class CdmpConfigType : uint8_t {
 //     LOG_DATA = 0x03,
 //     // Application-specific: 0x04-0xFF
 // };
+
+struct CdmpTimeouts {
+    static constexpr std::array<int, 3> RETRY_BACKOFFS_MS = {
+        100, 200, 500};
+};
 
 } // namespace eerie_leap::subsys::cdmp::types

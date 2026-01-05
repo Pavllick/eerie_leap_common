@@ -23,8 +23,8 @@ private:
     void RegisterCanHandlers();
     void UnregisterCanHandlers();
 
-    void ProcessStateChangeFrame(const CanFrame& frame);
-    void ProcessStateChangeResponseFrame(const CanFrame& frame);
+    void ProcessRequestFrame(const CanFrame& frame);
+    void ProcessResponseFrame(const CanFrame& frame);
 
     void SendStateChangeNotification(uint8_t target_device_id, CdmpDeviceStatus old_status, CdmpDeviceStatus new_status);
     void SendStateChangeResponse(uint8_t target_device_id, uint8_t transaction_id, bool success);
@@ -42,8 +42,6 @@ public:
 
     void Start() override;
     void Stop() override;
-
-    void ProcessFrame(const CanFrame& frame);
 
     // State change operations
     void NotifyStateChange(uint8_t target_device_id, CdmpDeviceStatus old_status, CdmpDeviceStatus new_status);

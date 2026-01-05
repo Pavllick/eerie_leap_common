@@ -29,14 +29,7 @@ private:
     uint8_t retry_count_ = 0;
     static constexpr uint8_t MAX_RETRIES = 3;
 
-    static constexpr uint64_t DISCOVERY_TIMEOUT_MS = K_MSEC(200).ticks;
-    static constexpr uint64_t ID_CLAIM_RESPONSE_TIMEOUT_MS = K_MSEC(50).ticks;
-    static constexpr uint64_t COMMAND_TIMEOUT_MS = K_MSEC(100).ticks;
     // static constexpr uint64_t HEARTBEAT_TIMEOUT_MS = K_SECONDS(9).ticks; // 3x heartbeat interval
-
-    static constexpr uint64_t RETRY_BACKOFF_1_MS = K_MSEC(100).ticks;
-    static constexpr uint64_t RETRY_BACKOFF_2_MS = K_MSEC(200).ticks;
-    static constexpr uint64_t RETRY_BACKOFF_3_MS = K_MSEC(500).ticks;
 
     void NotifyStatusChange(CdmpDeviceStatus old_status, CdmpDeviceStatus new_status);
     bool IsValidTransition(CdmpDeviceStatus from, CdmpDeviceStatus to) const;

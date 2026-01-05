@@ -34,7 +34,7 @@ void CdmpCommandService::RegisterCanHandlers() {
 
     canbus_handler_id_ = canbus_->RegisterFrameReceivedHandler(
         can_id_manager_->GetCommandCanId(),
-        [this](const CanFrame& frame) { ProcessFrame(frame.data); });
+        [this](const CanFrame& frame) { ProcessRequestFrame(frame.data); });
 
     canbus_response_handler_id_ = canbus_->RegisterFrameReceivedHandler(
         can_id_manager_->GetCommandResponseCanId(),
@@ -55,7 +55,7 @@ void CdmpCommandService::UnregisterCanHandlers() {
     }
 }
 
-void CdmpCommandService::ProcessFrame(std::span<const uint8_t> frame_data) {
+void CdmpCommandService::ProcessRequestFrame(std::span<const uint8_t> frame_data) {
     try {
         CdmpCommandMessage command = CdmpCommandMessage::FromCanFrame(frame_data);
 

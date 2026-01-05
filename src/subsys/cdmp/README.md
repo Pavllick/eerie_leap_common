@@ -177,7 +177,7 @@ The protocol does not predefine specific capabilities or their CAN ID assignment
 
 ```
 Byte 0:    Message Type = 0x01 (ID_CLAIM)
-Byte 1:    Claimed Device ID
+Byte 1:    Claiming Device ID
 Byte 2-5:  Unique Identifier (32-bit)
 Byte 6:    Device Type
 Byte 7:    Protocol Version
@@ -208,7 +208,7 @@ Byte 7:    Protocol Version
 ```
 Byte 0:    Message Type = 0x02 (ID_CLAIM_RESPONSE)
 Byte 1:    Responding Device ID
-Byte 2:    Claimed Device ID (being contested)
+Byte 2:    Claiming Device ID (being contested)
 Byte 3:    Result (0x00=Accept, 0x01=Reject/Conflict, 0x02=Version Incompatible)
 Byte 4-7:  Reserved
 ```

@@ -28,7 +28,7 @@ void CdmpHeartbeatService::Stop() {
     LOG_INF("CDMP Heartbeat Service stopped");
 }
 
-void CdmpHeartbeatService::ProcessFrame(std::span<const uint8_t> frame_data) {
+void CdmpHeartbeatService::ProcessFrame(uint32_t frame_id, std::span<const uint8_t> frame_data) {
     CdmpManagementMessageType message_type = static_cast<CdmpManagementMessageType>(frame_data[0]);
 
     switch(message_type) {

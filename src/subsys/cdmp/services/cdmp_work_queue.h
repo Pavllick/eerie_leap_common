@@ -1,6 +1,7 @@
 #pragma once
 
 #include <memory>
+#include <functional>
 
 #include <zephyr/kernel.h>
 
@@ -22,6 +23,10 @@ public:
 
     void Initialize();
     WorkQueueThread* GetWorkQueue();
+
+    void Run(const std::function<void()>& func) {
+        work_queue_thread_->Run(func);
+    }
 };
 
 } // namespace eerie_leap::subsys::cdmp::services
