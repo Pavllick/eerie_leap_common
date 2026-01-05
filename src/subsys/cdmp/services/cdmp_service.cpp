@@ -23,9 +23,7 @@ CdmpService::CdmpService(
     uint32_t base_can_id)
         : time_service_(std::move(time_service)),
         canbus_(std::move(canbus)),
-        base_can_id_(base_can_id),
-        device_type_(device_type),
-        unique_identifier_(unique_identifier) {
+        base_can_id_(base_can_id) {
 
     if(time_service_ == nullptr)
         throw std::runtime_error("Time service is null");
@@ -33,15 +31,15 @@ CdmpService::CdmpService(
     if(canbus_ == nullptr)
         throw std::runtime_error("Canbus interface is null");
 
-    if(unique_identifier_ == 0)
-        throw std::runtime_error("Unique identifier must be non-zero");
-
     can_id_manager_ = std::make_shared<CdmpCanIdManager>();
-    device_ = std::make_shared<CdmpDevice>(unique_identifier_, device_type_);
-    work_queue_ = std::make_shared<CdmpWorkQueue>();
+    device_ = std::make_shared<CdmpDevice>(time_service_, unique_identifier, device_type);
+    work_queue_thread_ = std::make_shared<WorkQueueThread>(
+        "cdmp_work_queue",
+        work_queue_stack_size_,
+        work_queue_priority_);
 
     canbus_services_.emplace_back(std::make_unique<CdmpManagementService>(
-        canbus_, can_id_manager_, device_, work_queue_));
+        canbus_, can_id_manager_, device_, time_service_, work_queue_thread_));
     canbus_services_.emplace_back(std::make_unique<CdmpStatusService>(
         canbus_, can_id_manager_, device_));
     canbus_services_.emplace_back(std::make_unique<CdmpCommandService>(
@@ -73,11 +71,11 @@ void CdmpService::ThreadEntry() {
 }
 
 bool CdmpService::Initialize() {
-    work_queue_->Initialize();
+    work_queue_thread_->Initialize();
     thread_->Initialize();
 
     LOG_INF("CDMP service initialized with device type %d, unique ID 0x%08X",
-        std::to_underlying(device_type_), unique_identifier_);
+        std::to_underlying(device_->GetDeviceType()), device_->GetUniqueIdentifier());
 
     return true;
 }

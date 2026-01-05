@@ -243,7 +243,8 @@ Any device can request network enumeration:
 
 ```
 Byte 0:    Message Type = 0x03 (DISCOVERY_REQUEST)
-Byte 1-7:  Reserved
+Byte 1-4:  Unique Identifier (32-bit)
+Byte 5-7:  Reserved
 ```
 
 **Discovery Response (CAN ID Base + 0, staggered 5-10ms per device)**

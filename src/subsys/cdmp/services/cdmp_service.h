@@ -6,7 +6,6 @@
 #include <vector>
 #include <zephyr/kernel.h>
 
-#include "subsys/time/i_time_service.h"
 #include "subsys/canbus/canbus.h"
 #include <subsys/threading/thread.h>
 #include "subsys/threading/work_queue_thread.h"
@@ -16,11 +15,9 @@
 #include "../models/cdmp_message.h"
 
 #include "i_cdmp_canbus_service.h"
-#include "cdmp_work_queue.h"
 
 namespace eerie_leap::subsys::cdmp::services {
 
-using namespace eerie_leap::subsys::time;
 using namespace eerie_leap::subsys::canbus;
 using namespace eerie_leap::subsys::threading;
 using namespace eerie_leap::subsys::cdmp::models;
@@ -35,13 +32,12 @@ private:
     static constexpr int k_priority_ = 5;
     std::unique_ptr<Thread> thread_;
 
-    // Core components
-    std::shared_ptr<CdmpDevice> device_;
-    std::shared_ptr<CdmpWorkQueue> work_queue_;
+    static constexpr int work_queue_stack_size_ = 4096;
+    static constexpr int work_queue_priority_ = 5;
+    std::shared_ptr<WorkQueueThread> work_queue_thread_;
 
     std::shared_ptr<ITimeService> time_service_;
-
-    // CAN interface
+    std::shared_ptr<CdmpDevice> device_;
     std::shared_ptr<Canbus> canbus_;
     std::shared_ptr<CdmpCanIdManager> can_id_manager_;
 
@@ -58,8 +54,6 @@ private:
     // Configuration
     bool is_running_ = false;
     uint32_t base_can_id_;
-    CdmpDeviceType device_type_;
-    uint32_t unique_identifier_ = 0;
     bool auto_discovery_enabled_ = true;
     uint64_t heartbeat_interval_ = DEFAULT_HEARTBEAT_INTERVAL;
 

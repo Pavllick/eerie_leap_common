@@ -66,32 +66,33 @@ void CdmpStatusMachine::NotifyStatusChange(CdmpDeviceStatus old_status, CdmpDevi
 }
 
 bool CdmpStatusMachine::IsValidTransition(CdmpDeviceStatus from, CdmpDeviceStatus to) const {
-    // Define valid state transitions
     switch(from) {
         case CdmpDeviceStatus::OFFLINE:
-            return to == CdmpDeviceStatus::INIT;
+            return to == CdmpDeviceStatus::INIT
+            || to == CdmpDeviceStatus::ERROR;
 
         case CdmpDeviceStatus::INIT:
-            return to == CdmpDeviceStatus::CLAIMING ||
-                   to == CdmpDeviceStatus::OFFLINE;
+            return to == CdmpDeviceStatus::CLAIMING
+                || to == CdmpDeviceStatus::OFFLINE
+                || to == CdmpDeviceStatus::ERROR;
 
         case CdmpDeviceStatus::CLAIMING:
-            return to == CdmpDeviceStatus::ONLINE ||
-                   to == CdmpDeviceStatus::VERSION_MISMATCH ||
-                   to == CdmpDeviceStatus::ERROR ||
-                   to == CdmpDeviceStatus::INIT;
+            return to == CdmpDeviceStatus::INIT
+                || to == CdmpDeviceStatus::ONLINE
+                || to == CdmpDeviceStatus::VERSION_MISMATCH
+                || to == CdmpDeviceStatus::ERROR;
 
         case CdmpDeviceStatus::ONLINE:
-            return to == CdmpDeviceStatus::VERSION_MISMATCH ||
-                   to == CdmpDeviceStatus::ERROR ||
-                   to == CdmpDeviceStatus::OFFLINE;
+            return to == CdmpDeviceStatus::VERSION_MISMATCH
+                || to == CdmpDeviceStatus::OFFLINE
+                || to == CdmpDeviceStatus::ERROR;
 
         case CdmpDeviceStatus::VERSION_MISMATCH:
             return to == CdmpDeviceStatus::OFFLINE;
 
         case CdmpDeviceStatus::ERROR:
-            return to == CdmpDeviceStatus::INIT ||
-                   to == CdmpDeviceStatus::OFFLINE;
+            return to == CdmpDeviceStatus::INIT
+                || to == CdmpDeviceStatus::OFFLINE;
 
         default:
             return false;

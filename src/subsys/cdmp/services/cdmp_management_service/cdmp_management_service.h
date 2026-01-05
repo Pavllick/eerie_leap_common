@@ -3,7 +3,6 @@
 #include "subsys/threading/work_queue_thread.h"
 
 #include "../cdmp_canbus_service_base.h"
-#include "../cdmp_work_queue.h"
 #include "cdmp_network_service.h"
 #include "cdmp_heartbeat_service.h"
 
@@ -13,7 +12,8 @@ using namespace eerie_leap::subsys::threading;
 
 class CdmpManagementService : public CdmpCanbusServiceBase {
 private:
-    std::shared_ptr<CdmpWorkQueue> work_queue_;
+    std::shared_ptr<ITimeService> time_service_;
+    std::shared_ptr<WorkQueueThread> work_queue_thread_;
     int canbus_handler_id_ = -1;
 
     std::vector<std::shared_ptr<ICdmpCanbusService>> canbus_services_;
@@ -29,7 +29,8 @@ public:
         std::shared_ptr<Canbus> canbus,
         std::shared_ptr<CdmpCanIdManager> can_id_manager,
         std::shared_ptr<CdmpDevice> device,
-        std::shared_ptr<CdmpWorkQueue> work_queue);
+        std::shared_ptr<ITimeService> time_service,
+        std::shared_ptr<WorkQueueThread> work_queue_thread);
 
     ~CdmpManagementService();
 

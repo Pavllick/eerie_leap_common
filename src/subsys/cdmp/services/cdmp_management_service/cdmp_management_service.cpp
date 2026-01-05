@@ -6,16 +6,18 @@ CdmpManagementService::CdmpManagementService(
     std::shared_ptr<Canbus> canbus,
     std::shared_ptr<CdmpCanIdManager> can_id_manager,
     std::shared_ptr<CdmpDevice> device,
-    std::shared_ptr<CdmpWorkQueue> work_queue)
+    std::shared_ptr<ITimeService> time_service,
+    std::shared_ptr<WorkQueueThread> work_queue_thread)
         : CdmpCanbusServiceBase(std::move(canbus), std::move(can_id_manager), std::move(device)),
-        work_queue_(work_queue) {
+        time_service_(std::move(time_service)),
+        work_queue_thread_(std::move(work_queue_thread)) {
 
     auto network_service = std::make_shared<CdmpNetworkService>(
-        canbus_, can_id_manager_, device_, work_queue_);
+        canbus_, can_id_manager_, device_, time_service_, work_queue_thread_);
 
     canbus_services_.push_back(network_service);
     canbus_services_.push_back(std::make_shared<CdmpHeartbeatService>(
-        canbus_, can_id_manager_, device_, network_service));
+        canbus_, can_id_manager_, device_, work_queue_thread_, network_service));
 }
 
 CdmpManagementService::~CdmpManagementService() {

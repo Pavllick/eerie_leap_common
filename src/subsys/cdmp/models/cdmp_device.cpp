@@ -8,9 +8,22 @@ LOG_MODULE_REGISTER(cdmp_device, LOG_LEVEL_INF);
 
 namespace eerie_leap::subsys::cdmp::models {
 
-CdmpDevice::CdmpDevice(uint32_t unique_identifier, CdmpDeviceType device_type, CdmpDeviceStatus status)
-    : protocol_version_(GetCurrentProtocolVersion()),
-    status_machine_(std::make_shared<CdmpStatusMachine>(status)) {}
+CdmpDevice::CdmpDevice(
+    std::shared_ptr<ITimeService> time_service,
+    uint32_t unique_identifier,
+    CdmpDeviceType device_type,
+    CdmpDeviceStatus status)
+        : time_service_(std::move(time_service)),
+        unique_identifier_(unique_identifier),
+        device_type_(device_type),
+        protocol_version_(GetCurrentProtocolVersion()),
+        status_machine_(std::make_shared<CdmpStatusMachine>(status)) {
+
+    if(unique_identifier == 0)
+        throw std::invalid_argument("Unique identifier must be non-zero");
+
+    UpdateHeartbeat();
+}
 
 
 void CdmpDevice::StartDiscovery() {
@@ -49,7 +62,7 @@ void CdmpDevice::SetStatus(CdmpDeviceStatus status, bool force) {
 }
 
 void CdmpDevice::UpdateHeartbeat() {
-    last_heartbeat_ = k_uptime_get();
+    last_heartbeat_ = time_service_->GetCurrentTime();
 }
 
 void CdmpDevice::SetCapability(CdmpDeviceCapabilityFlags capability, bool enabled) {

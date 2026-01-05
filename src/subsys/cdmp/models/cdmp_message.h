@@ -29,29 +29,34 @@ struct CdmpManagementMessage {
 
 struct CdmpDiscoveryRequestMessage {
     static constexpr CdmpManagementMessageType message_type = CdmpManagementMessageType::DISCOVERY_REQUEST;
+    uint32_t unique_identifier;
 
     static CdmpDiscoveryRequestMessage FromCanFrame(std::span<const uint8_t> frame_data) {
         if(frame_data[0] != static_cast<uint8_t>(CdmpManagementMessageType::DISCOVERY_REQUEST))
             throw std::invalid_argument("Incorrect message type");
 
         CdmpDiscoveryRequestMessage message = {};
+        message.unique_identifier =
+            (static_cast<uint32_t>(frame_data[4]) << 24)
+            | (static_cast<uint32_t>(frame_data[3]) << 16)
+            | (static_cast<uint32_t>(frame_data[2]) << 8)
+            | static_cast<uint32_t>(frame_data[1]);
 
         return message;
     }
 
     std::vector<uint8_t> ToCanFrame() const {
         std::vector<uint8_t> frame_data = {
-            std::to_underlying(message_type)};
+            std::to_underlying(message_type),
+            static_cast<uint8_t>(unique_identifier),
+            static_cast<uint8_t>(unique_identifier >> 8),
+            static_cast<uint8_t>(unique_identifier >> 16),
+            static_cast<uint8_t>(unique_identifier >> 24)
+        };
 
         return frame_data;
     }
 };
-
-// Byte 0:    Message Type = 0x04 (DISCOVERY_RESPONSE)
-// Byte 1:    Device ID
-// Byte 2-5:  Unique Identifier (32-bit)
-// Byte 6:    Device Type
-// Byte 7:    Reserved
 
 struct CdmpDiscoveryResponseMessage {
     static constexpr CdmpManagementMessageType message_type = CdmpManagementMessageType::DISCOVERY_RESPONSE;
@@ -127,12 +132,6 @@ struct CdmpIdClaimMessage {
         return frame_data;
     }
 };
-
-// Byte 0:    Message Type = 0x02 (ID_CLAIM_RESPONSE)
-// Byte 1:    Responding Device ID
-// Byte 2:    Claimed Device ID (being contested)
-// Byte 3:    Result (0x00=Accept, 0x01=Reject/Conflict, 0x02=Version Incompatible)
-// Byte 4-7:  Reserved
 
 struct CdmpIdClaimResponseMessage {
     static constexpr CdmpManagementMessageType message_type = CdmpManagementMessageType::ID_CLAIM_RESPONSE;

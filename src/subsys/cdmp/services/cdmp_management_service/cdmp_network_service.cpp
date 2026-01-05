@@ -15,9 +15,15 @@ CdmpNetworkService::CdmpNetworkService(
     std::shared_ptr<Canbus> canbus,
     std::shared_ptr<CdmpCanIdManager> can_id_manager,
     std::shared_ptr<CdmpDevice> device,
-    std::shared_ptr<CdmpWorkQueue> work_queue)
+    std::shared_ptr<ITimeService> time_service,
+    std::shared_ptr<WorkQueueThread> work_queue_thread_)
         : CdmpCanbusServiceBase(std::move(canbus), std::move(can_id_manager), std::move(device)),
-        work_queue_(work_queue) {}
+        time_service_(std::move(time_service)),
+        work_queue_thread_(std::move(work_queue_thread_)) {
+
+    validation_task_ = work_queue_thread_->CreateTask(
+        ProcessPeriodicValidation, this);
+}
 
 CdmpNetworkService::~CdmpNetworkService() {
     Stop();
@@ -25,25 +31,39 @@ CdmpNetworkService::~CdmpNetworkService() {
 
 void CdmpNetworkService::Start() {
     LOG_INF("CDMP Network Service started");
+
+    StartValidationTask();
 }
 
 void CdmpNetworkService::Stop() {
+    is_validation_task_running_ = false;
+    if(validation_task_.has_value())
+        work_queue_thread_->CancelTask(validation_task_.value());
+
     ClearAllDevices();
     LOG_INF("CDMP Network Service stopped");
+}
+
+void CdmpNetworkService::StartValidationTask() {
+    if(!is_validation_task_running_ && device_->GetStatus() == CdmpDeviceStatus::ONLINE) {
+        work_queue_thread_->ScheduleTask(validation_task_.value());
+        is_validation_task_running_ = true;
+    }
 }
 
 void CdmpNetworkService::OnDeviceStatusChanged(CdmpDeviceStatus old_status, CdmpDeviceStatus new_status) {
     switch(new_status) {
         case CdmpDeviceStatus::INIT:
-            work_queue_->Run([this]() { StartInitialization(); });
+            work_queue_thread_->Run([this]() { StartInitialization(); });
             break;
 
         case CdmpDeviceStatus::CLAIMING:
-            work_queue_->Run([this]() { SendIdClaim(); });
+            work_queue_thread_->Run([this]() { SendIdClaim(); });
             break;
 
         case CdmpDeviceStatus::ONLINE:
             LOG_INF("Device is now online");
+            StartValidationTask();
             break;
 
         case CdmpDeviceStatus::VERSION_MISMATCH:
@@ -64,12 +84,10 @@ void CdmpNetworkService::ProcessFrame(uint32_t frame_id, std::span<const uint8_t
 
     switch(message_type) {
         case CdmpManagementMessageType::DISCOVERY_REQUEST:
-            LOG_INF("Received discovery request");
-            SendDiscoveryResponse();
+            ProcessDiscoveryRequestFrame(frame_data);
             break;
 
         case CdmpManagementMessageType::DISCOVERY_RESPONSE:
-            LOG_INF("Received discovery response");
             ProcessDiscoveryResponseFrame(frame_data);
             break;
 
@@ -85,13 +103,30 @@ void CdmpNetworkService::ProcessFrame(uint32_t frame_id, std::span<const uint8_t
 
 void CdmpNetworkService::StartInitialization() {
     discovery_response_received_ = false;
+    int discovery_backoff_resets = 0;
 
-    for(const auto& backoff : CdmpTimeouts::RETRY_BACKOFFS_MS) {
+    int backoff_index = 0;
+    for(backoff_index = 0; backoff_index < CdmpTimeouts::RETRY_BACKOFFS_MS.size(); ++backoff_index) {
+        if(device_->GetStatus() != CdmpDeviceStatus::INIT)
+            return;
+
+        discovery_requesting_uids_.clear();
+        const auto& backoff = CdmpTimeouts::RETRY_BACKOFFS_MS[backoff_index];
+
         SendDiscoveryRequest();
-        k_msleep(200);
+        k_msleep(backoff);
 
         if(discovery_response_received_)
             break;
+
+        if(!discovery_requesting_uids_.empty()) {
+            for(const auto& uid : discovery_requesting_uids_) {
+                if(device_->GetUniqueIdentifier() > uid && discovery_backoff_resets < CdmpConstants::DISCOVERY_MAX_BACKOFF_RESETS) {
+                    discovery_backoff_resets++;
+                    backoff_index = 0;
+                }
+            }
+        }
 
         LOG_DBG("Retry discovery attempt with backoff: %d ms", backoff);
     }
@@ -99,20 +134,42 @@ void CdmpNetworkService::StartInitialization() {
     device_->SetStatus(CdmpDeviceStatus::CLAIMING);
 }
 
-void CdmpNetworkService::ProcessDiscoveryResponseFrame(std::span<const uint8_t> frame_data) {
-    try {
-        CdmpDiscoveryResponseMessage discovery = CdmpDiscoveryResponseMessage::FromCanFrame(frame_data);
-        UpdateDeviceFromDiscovery(discovery);
-        LOG_DBG("Processed discovery frame");
+void CdmpNetworkService::ProcessDiscoveryRequestFrame(std::span<const uint8_t> frame_data) {
+    LOG_INF("Processing discovery request frame");
 
-        discovery_response_received_ = true;
+    try {
+        auto message = CdmpDiscoveryRequestMessage::FromCanFrame(frame_data);
+
+        if(message.unique_identifier == 0 || message.unique_identifier == device_->GetUniqueIdentifier()) {
+            LOG_ERR("Device UID conflict detected during discovery - received UID: %08X",
+                message.unique_identifier);
+            device_->SetStatus(CdmpDeviceStatus::ERROR);
+
+            return;
+        }
+
+        discovery_requesting_uids_.push_back(message.unique_identifier);
+        SendDiscoveryResponse();
     } catch (const std::exception& e) {
-        LOG_ERR("Error processing discovery frame: %s", e.what());
+        LOG_ERR("Error processing discovery request frame: %s", e.what());
+    }
+}
+
+void CdmpNetworkService::ProcessDiscoveryResponseFrame(std::span<const uint8_t> frame_data) {
+    LOG_INF("Processing discovery response frame");
+
+    try {
+        auto message = CdmpDiscoveryResponseMessage::FromCanFrame(frame_data);
+        discovery_response_received_ = true;
+        UpdateDeviceFromDiscovery(message);
+    } catch (const std::exception& e) {
+        LOG_ERR("Error processing discovery response frame: %s", e.what());
     }
 }
 
 void CdmpNetworkService::SendDiscoveryRequest() {
     CdmpDiscoveryRequestMessage message{};
+    message.unique_identifier = device_->GetUniqueIdentifier();
     auto frame_data = message.ToCanFrame();
     uint32_t frame_id = can_id_manager_->GetDiscoveryRequestCanId();
     canbus_->SendFrame(frame_id, frame_data);
@@ -145,7 +202,7 @@ void CdmpNetworkService::SendIdClaim() {
         return;
     }
 
-    for(int i = 0; i < ID_CLAIM_RETRY_COUNT; ++i) {
+    for(int i = 0; i < CdmpConstants::ID_CLAIM_MAX_ATTEMPTS; ++i) {
         CdmpIdClaimMessage message = {};
         message.claiming_device_id = claiming_device_id_;
         message.unique_identifier = device_->GetUniqueIdentifier();
@@ -157,7 +214,7 @@ void CdmpNetworkService::SendIdClaim() {
         canbus_->SendFrame(frame_id, frame_data);
         LOG_INF("Sent ID claim for device %d", message.claiming_device_id);
 
-        k_msleep(ID_CLAIM_RESPONSE_TIMEOUT_MS);
+        k_msleep(CdmpConstants::ID_CLAIM_RESPONSE_TIMEOUT_MS);
 
         if(id_claim_result_.has_value() && id_claim_result_.value() == CdmpIdClaimResult::VERSION_INCOMPATIBLE) {
             device_->SetStatus(CdmpDeviceStatus::VERSION_MISMATCH);
@@ -268,11 +325,11 @@ void CdmpNetworkService::AddOrUpdateDevice(uint8_t device_id, CdmpDeviceType dev
 
         LOG_DBG("Updated device %d.", device_id);
     } else {
-        auto device = std::make_unique<CdmpDevice>(unique_identifier, device_type, CdmpDeviceStatus::ONLINE);
+        auto device = std::make_unique<CdmpDevice>(time_service_, unique_identifier, device_type, CdmpDeviceStatus::ONLINE);
         device->SetDeviceId(device_id);
         network_devices_.emplace(device_id, std::move(device));
 
-        if(device_id < device_->GetDeviceId())
+        if(device_id < lowest_id_on_network_)
             lowest_id_on_network_ = device_id;
 
         LOG_INF("Added new device: ID=%d, Type=%d, UID=0x%08X", device_id, std::to_underlying(device_type), unique_identifier);
@@ -327,19 +384,27 @@ void CdmpNetworkService::SetAutoDiscovery(bool enabled) {
     LOG_INF("Auto discovery %s", enabled ? "enabled" : "disabled");
 }
 
-void CdmpNetworkService::ProcessPeriodicTasks() {
-    // uint64_t current_time = k_uptime_get_64();
+WorkQueueTaskResult CdmpNetworkService::ProcessPeriodicValidation(CdmpNetworkService* instance) {
+    if(!instance->is_validation_task_running_) {
+        return {
+            .reschedule = false
+        };
+    }
 
-    // // Periodic discovery scan
-    // if(auto_discovery_enabled_ &&
-    //     (current_time - last_discovery_scan_ >= DISCOVERY_SCAN_INTERVAL)) {
-    //     ScanForDevices();
-    // }
+    instance->RemoveOfflineDevices();
 
-    // // Remove offline devices
-    // RemoveOfflineDevices();
+    uint8_t lowest_id_on_network = instance->device_->GetDeviceId();
+    for(const auto& [id, _] : instance->network_devices_) {
+        if(id < lowest_id_on_network)
+            lowest_id_on_network = std::min(lowest_id_on_network, id);
+    }
 
-    // Update lowest_id_on_network_
+    instance->lowest_id_on_network_ = lowest_id_on_network;
+
+    return {
+        .reschedule = instance->is_validation_task_running_,
+        .delay = K_MSEC(CdmpConstants::NETWORK_VALIDATION_INTERVAL_MS)
+    };
 }
 
 bool CdmpNetworkService::IsDeviceOnline(uint8_t device_id) const {
@@ -347,25 +412,22 @@ bool CdmpNetworkService::IsDeviceOnline(uint8_t device_id) const {
     return device && device->GetStatus() == CdmpDeviceStatus::ONLINE;
 }
 
-std::vector<uint8_t> CdmpNetworkService::GetOfflineDeviceIds() const {
+void CdmpNetworkService::RemoveOfflineDevices() {
+    auto current_time = time_service_->GetCurrentTime();
+
     std::vector<uint8_t> offline_devices;
     for(const auto& [device_id, device] : network_devices_) {
-        if(device->GetStatus() != CdmpDeviceStatus::ONLINE)
+        if(current_time - device->GetLastHeartbeat() > std::chrono::milliseconds(CdmpConstants::HEARTBEAT_TIMEOUT_MS))
             offline_devices.push_back(device_id);
     }
 
-    return offline_devices;
-}
-
-void CdmpNetworkService::RemoveOfflineDevices() {
-    auto offline_device_ids = GetOfflineDeviceIds();
-
-    for(auto device_id : offline_device_ids)
+    for(auto device_id : offline_devices) {
         RemoveDevice(device_id);
+    }
 }
 
 uint8_t CdmpNetworkService::GetLowestAvailableId(uint8_t after) const {
-    for(uint8_t i = after + 1; i <= 255; ++i) {
+    for(uint8_t i = after + 1; i < 255; ++i) {
         if(!network_devices_.contains(i))
             return i;
     }
