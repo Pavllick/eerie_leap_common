@@ -18,6 +18,8 @@ CdmpManagementService::CdmpManagementService(
     canbus_services_.push_back(network_service);
     canbus_services_.push_back(std::make_shared<CdmpHeartbeatService>(
         canbus_, can_id_manager_, device_, work_queue_thread_, network_service));
+    // canbus_services_.emplace_back(std::make_unique<CdmpStatusService>(
+    //     canbus_, can_id_manager_, device_));
 }
 
 CdmpManagementService::~CdmpManagementService() {

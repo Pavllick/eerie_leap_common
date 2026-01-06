@@ -2,7 +2,6 @@
 
 #include "../models/cdmp_device.h"
 #include "cdmp_management_service/cdmp_management_service.h"
-#include "cdmp_status_service.h"
 #include "cdmp_command_service/cdmp_command_service.h"
 #include "cdmp_state_service.h"
 
@@ -43,8 +42,6 @@ CdmpService::CdmpService(
 
     canbus_services_.emplace_back(std::make_unique<CdmpManagementService>(
         canbus_, can_id_manager_, device_, time_service_, work_queue_thread_));
-    canbus_services_.emplace_back(std::make_unique<CdmpStatusService>(
-        canbus_, can_id_manager_, device_));
     canbus_services_.emplace_back(std::make_unique<CdmpCommandService>(
         canbus_, can_id_manager_, device_));
     canbus_services_.emplace_back(std::make_unique<CdmpStateService>(

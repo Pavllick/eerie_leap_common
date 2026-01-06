@@ -12,6 +12,9 @@ CdmpStatusMachine::CdmpStatusMachine(CdmpDeviceStatus initial_status)
     : status_(initial_status) {}
 
 void CdmpStatusMachine::SetStatus(CdmpDeviceStatus new_status, bool force) {
+    if(new_status == status_)
+        return;
+
     CdmpDeviceStatus old_status = status_;
 
     if(!force && !CanTransitionTo(new_status)) {

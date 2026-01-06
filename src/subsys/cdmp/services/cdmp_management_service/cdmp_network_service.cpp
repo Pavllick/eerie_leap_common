@@ -321,8 +321,10 @@ void CdmpNetworkService::UpdateDeviceFromHeartbeat(const CdmpHeartbeatMessage& h
 
 void CdmpNetworkService::AddOrUpdateDevice(uint8_t device_id, CdmpDeviceType device_type, uint32_t unique_identifier) {
     if(network_devices_.contains(device_id)) {
-        network_devices_.at(device_id)->SetStatus(CdmpDeviceStatus::ONLINE, true);
-        network_devices_.at(device_id)->UpdateHeartbeat();
+        auto* device = network_devices_.at(device_id).get();
+
+        device->SetStatus(CdmpDeviceStatus::ONLINE, true);
+        device->UpdateHeartbeat();
 
         LOG_DBG("Updated device %d.", device_id);
     } else {
