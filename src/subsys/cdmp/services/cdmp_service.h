@@ -55,7 +55,6 @@ private:
     bool is_running_ = false;
     uint32_t base_can_id_;
     bool auto_discovery_enabled_ = true;
-    uint64_t heartbeat_interval_ = DEFAULT_HEARTBEAT_INTERVAL;
 
     // Timing
     uint64_t last_status_broadcast_ = 0;
@@ -63,12 +62,6 @@ private:
     uint8_t status_sequence_number_ = 0;
 
     void ThreadEntry() override;
-
-    // Message building and sending
-    void SendManagementMessage(const CdmpManagementMessage& msg);
-    void SendCommandResponse(const CdmpCommandResponse& response);
-    void SendStatusBroadcast();
-    void SendStateChangeNotification(const CdmpStateChangeNotification& notification);
 
     // Transaction management
     uint8_t GetNextTransactionId();
@@ -99,7 +92,6 @@ public:
     bool IsRunning() const;
 
     // Configuration
-    void SetHeartbeatInterval(uint64_t interval);
     void SetAutoDiscovery(bool enabled);
     void SetDeviceType(CdmpDeviceType device_type);
 

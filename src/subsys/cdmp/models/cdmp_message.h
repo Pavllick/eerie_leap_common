@@ -14,19 +14,6 @@ namespace eerie_leap::subsys::cdmp::models {
 using namespace eerie_leap::subsys::cdmp::types;
 
 // Base message structures (Base + 0)
-struct CdmpManagementMessage {
-    CdmpManagementMessageType message_type;
-    uint8_t device_id;
-    uint32_t unique_identifier;
-    CdmpDeviceType device_type;
-    uint8_t protocol_version;
-
-    // Heartbeat specific fields
-    CdmpHealthStatus health_status;
-    uint8_t uptime_counter;
-    uint32_t capability_flags;
-};
-
 struct CdmpDiscoveryRequestMessage {
     static constexpr CdmpManagementMessageType message_type = CdmpManagementMessageType::DISCOVERY_REQUEST;
     uint32_t unique_identifier;
@@ -58,6 +45,7 @@ struct CdmpDiscoveryRequestMessage {
     }
 };
 
+// Base message structures (Base + 0)
 struct CdmpDiscoveryResponseMessage {
     static constexpr CdmpManagementMessageType message_type = CdmpManagementMessageType::DISCOVERY_RESPONSE;
     uint8_t device_id;
@@ -94,6 +82,7 @@ struct CdmpDiscoveryResponseMessage {
     }
 };
 
+// Base message structures (Base + 0)
 struct CdmpIdClaimMessage {
     static constexpr CdmpManagementMessageType message_type = CdmpManagementMessageType::ID_CLAIM;
     uint8_t claiming_device_id;
@@ -133,6 +122,7 @@ struct CdmpIdClaimMessage {
     }
 };
 
+// Base message structures (Base + 0)
 struct CdmpIdClaimResponseMessage {
     static constexpr CdmpManagementMessageType message_type = CdmpManagementMessageType::ID_CLAIM_RESPONSE;
     uint8_t responding_device_id;
@@ -163,6 +153,7 @@ struct CdmpIdClaimResponseMessage {
     }
 };
 
+// Base message structures (Base + 0)
 struct CdmpHeartbeatMessage {
     static constexpr CdmpManagementMessageType message_type = CdmpManagementMessageType::HEARTBEAT;
     uint8_t device_id;

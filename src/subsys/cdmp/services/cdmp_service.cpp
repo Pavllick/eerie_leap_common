@@ -133,10 +133,6 @@ void CdmpService::CleanupExpiredTransactions() {
     }
 }
 
-void CdmpService::SetHeartbeatInterval(uint64_t interval) {
-    heartbeat_interval_ = interval;
-}
-
 void CdmpService::SetAutoDiscovery(bool enabled) {
     auto_discovery_enabled_ = enabled;
 }

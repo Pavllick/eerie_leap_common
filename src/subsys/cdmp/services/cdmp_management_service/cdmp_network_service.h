@@ -47,10 +47,15 @@ private:
     void ProcessIdClaimRequestFrame(std::span<const uint8_t> frame_data);
     void ProcessIdClaimResponseFrame(std::span<const uint8_t> frame_data);
 
-    void AddOrUpdateDevice(uint8_t device_id, CdmpDeviceType device_type, uint32_t unique_identifier);
+    void AddOrUpdateDevice(
+        uint8_t device_id,
+        CdmpDeviceType device_type,
+        uint32_t unique_identifier,
+        uint32_t capability_flags = 0);
     void UpdateDeviceFromDiscovery(const CdmpDiscoveryResponseMessage& discovery);
 
     void RemoveOfflineDevices();
+    void UpdateLowestIdOnNetwork();
     uint8_t GetLowestAvailableId(uint8_t after = 0) const;
 
 public:

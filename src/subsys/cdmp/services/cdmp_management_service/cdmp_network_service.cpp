@@ -225,6 +225,7 @@ void CdmpNetworkService::SendIdClaim() {
 
         if(id_claim_result_.has_value() && id_claim_result_.value() == CdmpIdClaimResult::ACCEPT) {
             device_->SetDeviceId(claiming_device_id_);
+            UpdateLowestIdOnNetwork();
             device_->SetStatus(CdmpDeviceStatus::ONLINE);
             break;
         }
@@ -263,13 +264,22 @@ void CdmpNetworkService::ProcessIdClaimRequestFrame(std::span<const uint8_t> fra
             canbus_->SendFrame(response_id, frame_data);
 
             return;
-        }
-
-        if(device_->GetDeviceId() == id_claim.claiming_device_id) {
+        } else if(device_->GetDeviceId() == id_claim.claiming_device_id) {
             CdmpIdClaimResponseMessage message = {};
             message.responding_device_id = device_->GetDeviceId();
             message.claiming_device_id = id_claim.claiming_device_id;
             message.result = CdmpIdClaimResult::REJECT;
+
+            auto frame_data = message.ToCanFrame();
+            uint32_t response_id = can_id_manager_->GetManagementCanId();
+            canbus_->SendFrame(response_id, frame_data);
+
+            return;
+        } else if(device_->GetDeviceId() == lowest_id_on_network_) {
+            CdmpIdClaimResponseMessage message = {};
+            message.responding_device_id = device_->GetDeviceId();
+            message.claiming_device_id = id_claim.claiming_device_id;
+            message.result = CdmpIdClaimResult::ACCEPT;
 
             auto frame_data = message.ToCanFrame();
             uint32_t response_id = can_id_manager_->GetManagementCanId();
@@ -316,20 +326,31 @@ void CdmpNetworkService::UpdateDeviceFromHeartbeat(const CdmpHeartbeatMessage& h
     AddOrUpdateDevice(
         heartbeat.device_id,
         network_devices_.at(device_id)->GetDeviceType(),
-        network_devices_.at(device_id)->GetUniqueIdentifier());
+        network_devices_.at(device_id)->GetUniqueIdentifier(),
+        heartbeat.capability_flags);
 }
 
-void CdmpNetworkService::AddOrUpdateDevice(uint8_t device_id, CdmpDeviceType device_type, uint32_t unique_identifier) {
+void CdmpNetworkService::AddOrUpdateDevice(
+    uint8_t device_id,
+    CdmpDeviceType device_type,
+    uint32_t unique_identifier,
+    uint32_t capability_flags) {
+
     if(network_devices_.contains(device_id)) {
         auto* device = network_devices_.at(device_id).get();
 
         device->SetStatus(CdmpDeviceStatus::ONLINE, true);
         device->UpdateHeartbeat();
+        if(capability_flags != 0)
+            device->SetCapabilityFlags(capability_flags);
 
         LOG_DBG("Updated device %d.", device_id);
     } else {
         auto device = std::make_unique<CdmpDevice>(time_service_, unique_identifier, device_type, CdmpDeviceStatus::ONLINE);
         device->SetDeviceId(device_id);
+        if(capability_flags != 0)
+            device->SetCapabilityFlags(capability_flags);
+
         network_devices_.emplace(device_id, std::move(device));
 
         if(device_id < lowest_id_on_network_)
@@ -395,14 +416,7 @@ WorkQueueTaskResult CdmpNetworkService::ProcessPeriodicValidation(CdmpNetworkSer
     }
 
     instance->RemoveOfflineDevices();
-
-    uint8_t lowest_id_on_network = instance->device_->GetDeviceId();
-    for(const auto& [id, _] : instance->network_devices_) {
-        if(id < lowest_id_on_network)
-            lowest_id_on_network = std::min(lowest_id_on_network, id);
-    }
-
-    instance->lowest_id_on_network_ = lowest_id_on_network;
+    instance->UpdateLowestIdOnNetwork();
 
     return {
         .reschedule = instance->is_validation_task_running_,
@@ -426,6 +440,16 @@ void CdmpNetworkService::RemoveOfflineDevices() {
 
     for(auto device_id : offline_devices)
         RemoveDevice(device_id);
+}
+
+void CdmpNetworkService::UpdateLowestIdOnNetwork() {
+    uint8_t lowest_id_on_network = device_->GetDeviceId();
+    for(const auto& [id, _] : network_devices_) {
+        if(id < lowest_id_on_network)
+            lowest_id_on_network = std::min(lowest_id_on_network, id);
+    }
+
+    lowest_id_on_network_ = lowest_id_on_network;
 }
 
 uint8_t CdmpNetworkService::GetLowestAvailableId(uint8_t after) const {

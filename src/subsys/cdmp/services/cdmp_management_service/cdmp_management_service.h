@@ -18,9 +18,6 @@ private:
 
     std::vector<std::shared_ptr<ICdmpCanbusService>> canbus_services_;
 
-    void SendDiscoveryRequest();
-    void SendManagementMessage(const CdmpManagementMessage& msg);
-
     void RegisterCanHandlers();
     void UnregisterCanHandlers();
 
