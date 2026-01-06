@@ -22,7 +22,7 @@ class CanbusService {
 private:
     std::shared_ptr<CanbusConfigurationManager> canbus_configuration_manager_;
 
-    std::unordered_map<uint8_t, std::shared_ptr<Canbus>> canbus_;
+    std::unordered_map<uint8_t, std::shared_ptr<Canbus>> canbuses_;
 
     void BitrateUpdated(uint8_t bus_channel, uint32_t bitrate);
     void ConfigureUserSignals(const CanChannelConfiguration& channel_configuration);

@@ -34,6 +34,7 @@ public:
 
     ~CdmpManagementService();
 
+    void Initialize() override;
     void Start() override;
     void Stop() override;
 

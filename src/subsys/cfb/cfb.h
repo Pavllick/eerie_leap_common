@@ -2,6 +2,7 @@
 
 #include <memory>
 #include <cstdint>
+#include <optional>
 
 #include "utilities/gui/coordinate.h"
 #include "subsys/threading/work_queue_thread.h"
@@ -20,7 +21,7 @@ private:
     static constexpr int thread_stack_size_ = 2048;
     static constexpr int thread_priority_ = 6;
     std::unique_ptr<WorkQueueThread> work_queue_thread_;
-    std::unique_ptr<WorkQueueTask<CfbTask>> work_queue_task_;
+    std::optional<WorkQueueTask<CfbTask>> work_queue_task_;
 
     uint16_t x_res_;
     uint16_t y_res_;

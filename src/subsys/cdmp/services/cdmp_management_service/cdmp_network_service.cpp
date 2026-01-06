@@ -19,14 +19,15 @@ CdmpNetworkService::CdmpNetworkService(
     std::shared_ptr<WorkQueueThread> work_queue_thread_)
         : CdmpCanbusServiceBase(std::move(canbus), std::move(can_id_manager), std::move(device)),
         time_service_(std::move(time_service)),
-        work_queue_thread_(std::move(work_queue_thread_)) {
-
-    validation_task_ = work_queue_thread_->CreateTask(
-        ProcessPeriodicValidation, this);
-}
+        work_queue_thread_(std::move(work_queue_thread_)) {}
 
 CdmpNetworkService::~CdmpNetworkService() {
     Stop();
+}
+
+void CdmpNetworkService::Initialize() {
+    validation_task_ = work_queue_thread_->CreateTask(
+        ProcessPeriodicValidation, this);
 }
 
 void CdmpNetworkService::Start() {
@@ -38,7 +39,7 @@ void CdmpNetworkService::Start() {
 void CdmpNetworkService::Stop() {
     is_validation_task_running_ = false;
     if(validation_task_.has_value())
-        work_queue_thread_->CancelTask(validation_task_.value());
+        validation_task_.value().Cancel();
 
     ClearAllDevices();
     LOG_INF("CDMP Network Service stopped");
@@ -46,7 +47,7 @@ void CdmpNetworkService::Stop() {
 
 void CdmpNetworkService::StartValidationTask() {
     if(!is_validation_task_running_ && device_->GetStatus() == CdmpDeviceStatus::ONLINE) {
-        work_queue_thread_->ScheduleTask(validation_task_.value());
+        validation_task_.value().Schedule();
         is_validation_task_running_ = true;
     }
 }
@@ -421,9 +422,8 @@ void CdmpNetworkService::RemoveOfflineDevices() {
             offline_devices.push_back(device_id);
     }
 
-    for(auto device_id : offline_devices) {
+    for(auto device_id : offline_devices)
         RemoveDevice(device_id);
-    }
 }
 
 uint8_t CdmpNetworkService::GetLowestAvailableId(uint8_t after) const {

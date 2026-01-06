@@ -33,6 +33,9 @@ CdmpService::CdmpService(
 
     can_id_manager_ = std::make_shared<CdmpCanIdManager>();
     device_ = std::make_shared<CdmpDevice>(time_service_, unique_identifier, device_type);
+
+    thread_ = std::make_unique<Thread>(
+        "cdmp_service_thread", this, k_stack_size_, k_priority_);
     work_queue_thread_ = std::make_shared<WorkQueueThread>(
         "cdmp_work_queue",
         work_queue_stack_size_,
@@ -47,9 +50,6 @@ CdmpService::CdmpService(
     canbus_services_.emplace_back(std::make_unique<CdmpStateService>(
         canbus_, can_id_manager_, device_));
     // TODO: Add IsoTp Service
-
-    thread_ = std::make_unique<Thread>(
-        "cdmp_service_thread", this, k_stack_size_, k_priority_);
 }
 
 CdmpService::~CdmpService() {
@@ -73,6 +73,9 @@ void CdmpService::ThreadEntry() {
 bool CdmpService::Initialize() {
     work_queue_thread_->Initialize();
     thread_->Initialize();
+
+    for(auto& service : canbus_services_)
+        service->Initialize();
 
     LOG_INF("CDMP service initialized with device type %d, unique ID 0x%08X",
         std::to_underlying(device_->GetDeviceType()), device_->GetUniqueIdentifier());

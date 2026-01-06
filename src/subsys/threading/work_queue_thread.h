@@ -13,8 +13,11 @@ private:
     k_work_q work_q_;
     k_work_sync sync_;
 
+    bool initialized_ = false;
+
     std::vector<std::unique_ptr<WorkQueueRunnerTask>> runner_tasks_;
 
+    void IsValid() const;
     static void TaskHandler(k_work* work);
     static void RunnerTaskHandler(k_work* work);
 
@@ -27,30 +30,23 @@ public:
 
     template<typename T>
     WorkQueueTask<T> CreateTask(const WorkQueueTask<T>::Handler& handler, std::unique_ptr<T> user_data) {
-        WorkQueueTask<T> task;
-        task.work_q = &work_q_;
-        task.handler = handler;
+        IsValid();
+
+        WorkQueueTask<T> task(&work_q_, &sync_, TaskHandler, handler);
         task.SetUserData(std::move(user_data));
-        k_work_init_delayable(&task.work, TaskHandler);
 
         return task;
     }
 
     template<typename T>
     WorkQueueTask<T> CreateTask(const WorkQueueTask<T>::Handler& handler, T* user_data) {
-        WorkQueueTask<T> task;
-        task.work_q = &work_q_;
-        task.handler = handler;
+        IsValid();
+
+        WorkQueueTask<T> task(&work_q_, &sync_, TaskHandler, handler);
         task.SetUserData(user_data);
-        k_work_init_delayable(&task.work, TaskHandler);
 
         return task;
     }
-
-    void ScheduleTask(WorkQueueTaskBase& task);
-
-    bool CancelTask(WorkQueueTaskBase& task);
-    bool FlushTask(WorkQueueTaskBase& task);
 
     void Run(const WorkQueueRunnerTask::Handler& handler);
 };

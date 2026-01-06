@@ -63,6 +63,7 @@ public:
 
     ~CdmpNetworkService();
 
+    void Initialize() override;
     void Start() override;
     void Stop() override;
 

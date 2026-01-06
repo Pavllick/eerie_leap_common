@@ -24,6 +24,11 @@ CdmpManagementService::~CdmpManagementService() {
     Stop();
 }
 
+void CdmpManagementService::Initialize() {
+    for(auto& service : canbus_services_)
+        service->Initialize();
+}
+
 void CdmpManagementService::Start() {
     for(auto& service : canbus_services_)
         service->Start();

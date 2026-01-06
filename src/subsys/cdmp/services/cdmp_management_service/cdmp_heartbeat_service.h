@@ -42,6 +42,7 @@ public:
 
     ~CdmpHeartbeatService();
 
+    void Initialize() override;
     void Start() override;
     void Stop() override;
 

@@ -15,33 +15,34 @@ CdmpHeartbeatService::CdmpHeartbeatService(
     std::shared_ptr<CdmpNetworkService> network_service)
     : CdmpCanbusServiceBase(std::move(canbus), std::move(can_id_manager), std::move(device)),
     work_queue_thread_(std::move(work_queue_thread)),
-    network_service_(std::move(network_service)) {
-
-    heartbeat_task_ = work_queue_thread_->CreateTask(
-        ProcessPeriodicHeartbeat, this);
-}
+    network_service_(std::move(network_service)) {}
 
 CdmpHeartbeatService::~CdmpHeartbeatService() {
     Stop();
 }
 
-void CdmpHeartbeatService::Start() {
-    LOG_INF("CDMP Heartbeat Service started, interval: %d ms", CdmpConstants::HEARTBEAT_INTERVAL_MS);
+void CdmpHeartbeatService::Initialize() {
+    heartbeat_task_ = work_queue_thread_->CreateTask(
+        ProcessPeriodicHeartbeat, this);
+}
 
+void CdmpHeartbeatService::Start() {
     StartHeartbeatTask();
 }
 
 void CdmpHeartbeatService::Stop() {
     is_heartbeat_task_running_ = false;
     if(heartbeat_task_.has_value())
-        work_queue_thread_->CancelTask(heartbeat_task_.value());
+        heartbeat_task_.value().Cancel();
 
     LOG_INF("CDMP Heartbeat Service stopped");
 }
 
 void CdmpHeartbeatService::StartHeartbeatTask() {
     if(heartbeat_enabled_ && !is_heartbeat_task_running_ && device_->GetStatus() == CdmpDeviceStatus::ONLINE) {
-        work_queue_thread_->ScheduleTask(heartbeat_task_.value());
+        LOG_INF("CDMP Heartbeat Service started, interval: %d ms", CdmpConstants::HEARTBEAT_INTERVAL_MS);
+
+        heartbeat_task_.value().Schedule();
         is_heartbeat_task_running_ = true;
     }
 }
@@ -123,7 +124,7 @@ WorkQueueTaskResult CdmpHeartbeatService::ProcessPeriodicHeartbeat(CdmpHeartbeat
     instance->SendHeartbeat();
 
     return {
-        .reschedule = instance->IsHeartbeatEnabled(),
+        .reschedule = instance->heartbeat_enabled_,
         .delay = K_MSEC(CdmpConstants::HEARTBEAT_INTERVAL_MS)
     };
 }

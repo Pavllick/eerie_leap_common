@@ -6,7 +6,6 @@
 #include <zephyr/logging/log.h>
 
 #include "canbus.h"
-#include "zephyr/drivers/can.h"
 
 LOG_MODULE_REGISTER(canbus_logger);
 
@@ -54,7 +53,7 @@ bool Canbus::Initialize() {
         return false;
     }
 
-    can_mode_t can_mode = CAN_MODE_LOOPBACK;
+    can_mode_t can_mode = CAN_MODE_NORMAL;
     if(type_ == CanbusType::CANFD && (capabilities & CAN_MODE_FD))
         can_mode = CAN_MODE_FD;
     else
@@ -65,6 +64,7 @@ bool Canbus::Initialize() {
 		LOG_ERR("Failed to set mode [%d].", ret);
 		return false;
 	}
+    LOG_INF("CAN mode set to %d.", can_mode);
 
     if(bitrate_ == 0) {
         LOG_INF("Auto-bitrate mode enabled - will detect on bus activity");
@@ -92,6 +92,8 @@ bool Canbus::Initialize() {
         }
 
         bitrate_detected_ = true;
+
+        LOG_INF("Bitrate set to: %d.", bitrate_);
     }
 
     LOG_INF("CANBus initialized successfully.");
@@ -156,7 +158,7 @@ void Canbus::SendFrame(uint32_t frame_id, std::span<const uint8_t> frame_data) {
         nullptr);
 
     if(res != 0) {
-        // LOG_ERR("Failed to send frame [%d].", res);
+        LOG_DBG("Failed to send frame [%d].", res);
         return;
     }
 
@@ -404,9 +406,9 @@ bool Canbus::TestBitrate(uint32_t bitrate, uint32_t &frame_count) {
             return false;
 
         // Valid activity means error-active state with reasonable error counts
-        return (state == CAN_STATE_ERROR_ACTIVE &&
-                err_cnt.tx_err_cnt < 128 &&
-                err_cnt.rx_err_cnt < 128);
+        return (state == CAN_STATE_ERROR_ACTIVE
+            && err_cnt.tx_err_cnt < 128
+            && err_cnt.rx_err_cnt < 128);
     }
 
     return false;

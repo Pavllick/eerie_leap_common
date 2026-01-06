@@ -14,7 +14,7 @@ namespace eerie_leap::subsys::cfb {
 Cfb::Cfb(const device* display_dev)
     : display_dev_(display_dev),
     work_queue_thread_(nullptr),
-    work_queue_task_(nullptr) {}
+    work_queue_task_(std::nullopt) {}
 
 bool Cfb::Initialize() {
     if(initialized_) {
@@ -72,9 +72,8 @@ void Cfb::InitializeThread() {
     auto task = std::make_unique<CfbTask>();
     task->display_dev = display_dev_;
 
-    work_queue_task_ = std::make_unique<WorkQueueTask<CfbTask>>(
-        work_queue_thread_->CreateTask(ProcessWorkTask, std::move(task)));
-    work_queue_thread_->ScheduleTask(*work_queue_task_);
+    work_queue_task_ = work_queue_thread_->CreateTask(ProcessWorkTask, std::move(task));
+    work_queue_task_.value().Schedule();
 
     LOG_INF("Display service initialized.");
 }
@@ -97,8 +96,8 @@ WorkQueueTaskResult Cfb::ProcessWorkTask(CfbTask* task) {
 }
 
 bool Cfb::Flush() {
-    work_queue_thread_->ScheduleTask(*work_queue_task_);
-    work_queue_thread_->FlushTask(*work_queue_task_);
+    work_queue_task_.value().Schedule();
+    work_queue_task_.value().Flush();
 
     return true;
 }
@@ -217,18 +216,18 @@ bool Cfb::Clear(bool clear_display) {
 }
 
 void Cfb::SetAnimationHandler(std::function<void()> handler, uint32_t frame_rate) {
-    work_queue_task_->GetUserdata()->animation_handler = handler;
-    work_queue_task_->GetUserdata()->frame_rate = frame_rate;
+    work_queue_task_.value().GetUserdata()->animation_handler = handler;
+    work_queue_task_.value().GetUserdata()->frame_rate = frame_rate;
 }
 
 void Cfb::StartAnimation() {
-    atomic_set(&work_queue_task_->GetUserdata()->is_animation_running_, 1);
-    work_queue_thread_->ScheduleTask(*work_queue_task_);
+    atomic_set(&work_queue_task_.value().GetUserdata()->is_animation_running_, 1);
+    work_queue_task_.value().Schedule();
 }
 
 void Cfb::StopAnimation() {
-    work_queue_thread_->CancelTask(*work_queue_task_);
-    atomic_set(&work_queue_task_->GetUserdata()->is_animation_running_, 0);
+    work_queue_task_.value().Cancel();
+    atomic_set(&work_queue_task_.value().GetUserdata()->is_animation_running_, 0);
 }
 
 void Cfb::PrintScreenInfo() {

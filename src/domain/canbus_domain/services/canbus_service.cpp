@@ -30,17 +30,17 @@ CanbusService::CanbusService(
             BitrateUpdated(bus_channel, bitrate);
         });
 
-        canbus_.emplace(bus_channel, canbus);
+        canbuses_.emplace(bus_channel, std::move(canbus));
 
         ConfigureUserSignals(channel_configuration);
     }
 }
 
 std::shared_ptr<Canbus> CanbusService::GetCanbus(uint8_t bus_channel) const {
-    if(!canbus_.contains(bus_channel))
+    if(!canbuses_.contains(bus_channel))
         return nullptr;
 
-    return canbus_.at(bus_channel);
+    return canbuses_.at(bus_channel);
 }
 
 const CanChannelConfiguration* CanbusService::GetChannelConfiguration(uint8_t bus_channel) const {
