@@ -10,16 +10,16 @@ namespace eerie_leap::subsys::cdmp::models {
 
 CdmpDevice::CdmpDevice(
     std::shared_ptr<ITimeService> time_service,
-    uint32_t unique_identifier,
+    uint32_t uid,
     CdmpDeviceType device_type,
     CdmpDeviceStatus status)
         : time_service_(std::move(time_service)),
-        unique_identifier_(unique_identifier),
+        uid_(uid),
         device_type_(device_type),
         protocol_version_(GetCurrentProtocolVersion()),
         status_machine_(std::make_shared<CdmpStatusMachine>(status)) {
 
-    if(unique_identifier == 0)
+    if(uid == 0)
         throw std::invalid_argument("Unique identifier must be non-zero");
 
     UpdateHeartbeat();
@@ -27,38 +27,28 @@ CdmpDevice::CdmpDevice(
 
 
 void CdmpDevice::StartDiscovery() {
-    SetStatus(CdmpDeviceStatus::INIT);
-    LOG_INF("Starting device discovery");
+    status_machine_->SetStatus(CdmpDeviceStatus::INIT);
 }
 
 void CdmpDevice::ClaimId() {
-    SetStatus(CdmpDeviceStatus::CLAIMING);
-    LOG_INF("Claiming device ID");
+    status_machine_->SetStatus(CdmpDeviceStatus::CLAIMING);
 }
 
-void CdmpDevice::GoOnline() {
-    SetStatus(CdmpDeviceStatus::ONLINE);
-    LOG_INF("Device is now online");
+void CdmpDevice::GoOnline(bool force) {
+    status_machine_->SetStatus(CdmpDeviceStatus::ONLINE, force);
 }
 
 void CdmpDevice::EnterVersionMismatch() {
-    SetStatus(CdmpDeviceStatus::VERSION_MISMATCH);
-    LOG_ERR("Protocol version mismatch detected");
+    status_machine_->SetStatus(CdmpDeviceStatus::VERSION_MISMATCH);
 }
 
 void CdmpDevice::EnterError() {
-    SetStatus(CdmpDeviceStatus::ERROR);
-    LOG_ERR("Device entered error state");
+    status_machine_->SetStatus(CdmpDeviceStatus::ERROR);
 }
 
 void CdmpDevice::Reset() {
-    SetStatus(CdmpDeviceStatus::OFFLINE);
+    status_machine_->SetStatus(CdmpDeviceStatus::OFFLINE);
     health_status_ = CdmpHealthStatus::OK;
-    LOG_INF("Device reset to default state");
-}
-
-void CdmpDevice::SetStatus(CdmpDeviceStatus status, bool force) {
-    status_machine_->SetStatus(status, force);
 }
 
 void CdmpDevice::UpdateHeartbeat() {

@@ -50,7 +50,7 @@ private:
     void AddOrUpdateDevice(
         uint8_t device_id,
         CdmpDeviceType device_type,
-        uint32_t unique_identifier,
+        uint32_t uid,
         uint32_t capability_flags = 0);
     void UpdateDeviceFromDiscovery(const CdmpDiscoveryResponseMessage& discovery);
 

@@ -16,14 +16,14 @@ using namespace eerie_leap::subsys::cdmp::types;
 // Base message structures (Base + 0)
 struct CdmpDiscoveryRequestMessage {
     static constexpr CdmpManagementMessageType message_type = CdmpManagementMessageType::DISCOVERY_REQUEST;
-    uint32_t unique_identifier;
+    uint32_t uid;
 
     static CdmpDiscoveryRequestMessage FromCanFrame(std::span<const uint8_t> frame_data) {
         if(frame_data[0] != static_cast<uint8_t>(CdmpManagementMessageType::DISCOVERY_REQUEST))
             throw std::invalid_argument("Incorrect message type");
 
         CdmpDiscoveryRequestMessage message = {};
-        message.unique_identifier =
+        message.uid =
             (static_cast<uint32_t>(frame_data[4]) << 24)
             | (static_cast<uint32_t>(frame_data[3]) << 16)
             | (static_cast<uint32_t>(frame_data[2]) << 8)
@@ -35,10 +35,10 @@ struct CdmpDiscoveryRequestMessage {
     std::vector<uint8_t> ToCanFrame() const {
         std::vector<uint8_t> frame_data = {
             std::to_underlying(message_type),
-            static_cast<uint8_t>(unique_identifier),
-            static_cast<uint8_t>(unique_identifier >> 8),
-            static_cast<uint8_t>(unique_identifier >> 16),
-            static_cast<uint8_t>(unique_identifier >> 24)
+            static_cast<uint8_t>(uid),
+            static_cast<uint8_t>(uid >> 8),
+            static_cast<uint8_t>(uid >> 16),
+            static_cast<uint8_t>(uid >> 24)
         };
 
         return frame_data;
@@ -49,7 +49,7 @@ struct CdmpDiscoveryRequestMessage {
 struct CdmpDiscoveryResponseMessage {
     static constexpr CdmpManagementMessageType message_type = CdmpManagementMessageType::DISCOVERY_RESPONSE;
     uint8_t device_id;
-    uint32_t unique_identifier;
+    uint32_t uid;
     CdmpDeviceType device_type;
 
     static CdmpDiscoveryResponseMessage FromCanFrame(std::span<const uint8_t> frame_data) {
@@ -58,7 +58,7 @@ struct CdmpDiscoveryResponseMessage {
 
         CdmpDiscoveryResponseMessage message = {};
         message.device_id = frame_data[1];
-        message.unique_identifier =
+        message.uid =
             (static_cast<uint32_t>(frame_data[5]) << 24)
             | (static_cast<uint32_t>(frame_data[4]) << 16)
             | (static_cast<uint32_t>(frame_data[3]) << 8)
@@ -72,10 +72,10 @@ struct CdmpDiscoveryResponseMessage {
         std::vector<uint8_t> frame_data = {
             std::to_underlying(message_type),
             device_id,
-            static_cast<uint8_t>(unique_identifier),
-            static_cast<uint8_t>(unique_identifier >> 8),
-            static_cast<uint8_t>(unique_identifier >> 16),
-            static_cast<uint8_t>(unique_identifier >> 24),
+            static_cast<uint8_t>(uid),
+            static_cast<uint8_t>(uid >> 8),
+            static_cast<uint8_t>(uid >> 16),
+            static_cast<uint8_t>(uid >> 24),
             std::to_underlying(device_type)};
 
         return frame_data;
@@ -86,7 +86,7 @@ struct CdmpDiscoveryResponseMessage {
 struct CdmpIdClaimMessage {
     static constexpr CdmpManagementMessageType message_type = CdmpManagementMessageType::ID_CLAIM;
     uint8_t claiming_device_id;
-    uint32_t unique_identifier;
+    uint32_t uid;
     CdmpDeviceType device_type;
     uint8_t protocol_version;
 
@@ -96,7 +96,7 @@ struct CdmpIdClaimMessage {
 
         CdmpIdClaimMessage message = {};
         message.claiming_device_id = frame_data[1];
-        message.unique_identifier =
+        message.uid =
             (static_cast<uint32_t>(frame_data[5]) << 24)
             | (static_cast<uint32_t>(frame_data[4]) << 16)
             | (static_cast<uint32_t>(frame_data[3]) << 8)
@@ -111,10 +111,10 @@ struct CdmpIdClaimMessage {
         std::vector<uint8_t> frame_data = {
             std::to_underlying(message_type),
             claiming_device_id,
-            static_cast<uint8_t>(unique_identifier),
-            static_cast<uint8_t>(unique_identifier >> 8),
-            static_cast<uint8_t>(unique_identifier >> 16),
-            static_cast<uint8_t>(unique_identifier >> 24),
+            static_cast<uint8_t>(uid),
+            static_cast<uint8_t>(uid >> 8),
+            static_cast<uint8_t>(uid >> 16),
+            static_cast<uint8_t>(uid >> 24),
             std::to_underlying(device_type),
             protocol_version};
 
@@ -127,6 +127,7 @@ struct CdmpIdClaimResponseMessage {
     static constexpr CdmpManagementMessageType message_type = CdmpManagementMessageType::ID_CLAIM_RESPONSE;
     uint8_t responding_device_id;
     uint8_t claiming_device_id;
+    uint32_t claiming_device_uid;
     CdmpIdClaimResult result;
 
     static CdmpIdClaimResponseMessage FromCanFrame(std::span<const uint8_t> frame_data) {

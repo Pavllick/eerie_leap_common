@@ -138,7 +138,7 @@ The protocol does not predefine specific capabilities or their CAN ID assignment
 - **Logical Device ID**: uint8_t (1-254), dynamically assigned during startup
   - 0: Reserved (invalid/unassigned)
   - 255: Reserved (broadcast address)
-- **Unique Identifier**: 32-bit (serial number, MAC address, random number, or other source)
+- **Unique Identifier (UID)**: 32-bit (serial number, MAC address, random number, or other source)
 - **Device Type**: uint8_t enumeration (application-specific)
 
 ### 3.2 ID Assignment Protocol
@@ -155,7 +155,7 @@ The protocol does not predefine specific capabilities or their CAN ID assignment
 1. **Select ID**: After collecting responses (or 3 failed attempts), choose ID:
    - If responses received: Select lowest available ID (1-254), filling gaps
    - If no responses after 3 retries: Assign ID = 1 (first device on network)
-1. **ID claim**: Broadcast on Base + 0 with unique identifier (32-bit)
+1. **ID claim**: Broadcast on Base + 0 with UID (32-bit)
 1. **Conflict detection**: Wait 50ms for objections
 1. **Confirmation**: Begin normal operation
 
@@ -178,7 +178,7 @@ The protocol does not predefine specific capabilities or their CAN ID assignment
 ```
 Byte 0:    Message Type = 0x01 (ID_CLAIM)
 Byte 1:    Claiming Device ID
-Byte 2-5:  Unique Identifier (32-bit)
+Byte 2-5:  Claiming Device UID (32-bit)
 Byte 6:    Device Type
 Byte 7:    Protocol Version
 ```
@@ -209,8 +209,8 @@ Byte 7:    Protocol Version
 Byte 0:    Message Type = 0x02 (ID_CLAIM_RESPONSE)
 Byte 1:    Responding Device ID
 Byte 2:    Claiming Device ID (being contested)
-Byte 3:    Result (0x00=Accept, 0x01=Reject/Conflict, 0x02=Version Incompatible)
-Byte 4-7:  Reserved
+Byte 3-6:  Claiming Device UID (32-bit)
+Byte 7:    Result (0x00=Accept, 0x01=Reject/Conflict, 0x02=Version Incompatible)
 ```
 
 **Result Codes:**
@@ -243,7 +243,7 @@ Any device can request network enumeration:
 
 ```
 Byte 0:    Message Type = 0x03 (DISCOVERY_REQUEST)
-Byte 1-4:  Unique Identifier (32-bit)
+Byte 1-4:  UID (32-bit)
 Byte 5-7:  Reserved
 ```
 
@@ -252,10 +252,12 @@ Byte 5-7:  Reserved
 ```
 Byte 0:    Message Type = 0x04 (DISCOVERY_RESPONSE)
 Byte 1:    Device ID
-Byte 2-5:  Unique Identifier (32-bit)
+Byte 2-5:  UID (32-bit)
 Byte 6:    Device Type
 Byte 7:    Reserved
 ```
+
+If a device receives a discovery response with its own UID, it shall enter ERROR status immediately and cease all protocol transmissions.
 
 ### 3.4 Heartbeat
 
@@ -651,7 +653,7 @@ Byte 4-7:  Reserved
 
 ```
 OFFLINE          → Power off or not initialized
-INIT             → Power on, generating ID and unique identifier (if needed)
+INIT             → Power on, generating ID and UID (if needed)
 CLAIMING         → Attempting to claim Device ID
 ONLINE           → Normal operation, ID claimed
 VERSION_MISMATCH → Incompatible protocol version detected (network-wide condition)

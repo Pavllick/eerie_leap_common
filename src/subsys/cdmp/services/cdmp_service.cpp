@@ -18,7 +18,7 @@ CdmpService::CdmpService(
     std::shared_ptr<ITimeService> time_service,
     std::shared_ptr<Canbus> canbus,
     CdmpDeviceType device_type,
-    uint32_t unique_identifier,
+    uint32_t uid,
     uint32_t base_can_id)
         : time_service_(std::move(time_service)),
         canbus_(std::move(canbus)),
@@ -31,7 +31,7 @@ CdmpService::CdmpService(
         throw std::runtime_error("Canbus interface is null");
 
     can_id_manager_ = std::make_shared<CdmpCanIdManager>();
-    device_ = std::make_shared<CdmpDevice>(time_service_, unique_identifier, device_type);
+    device_ = std::make_shared<CdmpDevice>(time_service_, uid, device_type);
 
     thread_ = std::make_unique<Thread>(
         "cdmp_service_thread", this, k_stack_size_, k_priority_);
@@ -91,7 +91,7 @@ void CdmpService::Stop() {
     thread_->Join();
 
     if(device_)
-        device_->SetStatus(CdmpDeviceStatus::OFFLINE);
+        device_->Reset();
 
     is_running_ = false;
 

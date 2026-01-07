@@ -81,7 +81,7 @@ public:
         std::shared_ptr<ITimeService> time_service,
         std::shared_ptr<Canbus> canbus,
         CdmpDeviceType device_type,
-        uint32_t unique_identifier,
+        uint32_t uid,
         uint32_t base_can_id = CdmpCanIdManager::DEFAULT_BASE_CAN_ID);
     ~CdmpService();
 

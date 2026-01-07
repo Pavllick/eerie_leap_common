@@ -34,7 +34,7 @@ private:
     std::shared_ptr<ITimeService> time_service_;
 
     uint8_t device_id_ = DEVICE_ID_UNASSIGNED;
-    uint32_t unique_identifier_ = 0;
+    uint32_t uid_ = 0;
     CdmpDeviceType device_type_ = CdmpDeviceType::NONE;
     uint8_t protocol_version_;
     CdmpHealthStatus health_status_ = CdmpHealthStatus::OK;
@@ -50,14 +50,14 @@ public:
 
     CdmpDevice(
         std::shared_ptr<ITimeService> time_service,
-        uint32_t unique_identifier,
+        uint32_t uid,
         CdmpDeviceType device_type,
         CdmpDeviceStatus status = CdmpDeviceStatus::OFFLINE);
 
     // Status transitions
     void StartDiscovery();
     void ClaimId();
-    void GoOnline();
+    void GoOnline(bool force = false);
     void EnterVersionMismatch();
     void EnterError();
     void Reset();
@@ -65,7 +65,7 @@ public:
     // Getters
     CdmpStatusMachine& GetStatusMachine() { return *status_machine_; }
     [[nodiscard]] uint8_t GetDeviceId() const { return device_id_; }
-    [[nodiscard]] uint32_t GetUniqueIdentifier() const { return unique_identifier_; }
+    [[nodiscard]] uint32_t GetUniqueIdentifier() const { return uid_; }
     [[nodiscard]] CdmpDeviceType GetDeviceType() const { return device_type_; }
     [[nodiscard]] uint8_t GetProtocolVersion() const { return protocol_version_; }
     [[nodiscard]] CdmpDeviceStatus GetStatus() const { return status_machine_->GetCurrentStatus(); }
@@ -76,7 +76,6 @@ public:
 
     // Setters
     void SetDeviceId(uint8_t device_id) { device_id_ = device_id; }
-    void SetStatus(CdmpDeviceStatus status, bool force = false);
     void SetHealthStatus(CdmpHealthStatus health_status) { health_status_ = health_status; }
     void SetCapabilityFlags(uint32_t flags) { capability_flags_ = flags; }
     void UpdateHeartbeat();
