@@ -4,10 +4,10 @@
 
 #include "subsys/canbus/canbus.h"
 
-#include "../utilities/cdmp_can_id_manager.h"
-#include "../utilities/cdmp_status_machine.h"
-#include "../models/cdmp_device.h"
-#include "../models/cdmp_message.h"
+#include "subsys/cdmp/utilities/cdmp_can_id_manager.h"
+#include "subsys/cdmp/utilities/cdmp_status_machine.h"
+#include "subsys/cdmp/models/cdmp_device.h"
+#include "subsys/cdmp/models/cdmp_message.h"
 
 #include "i_cdmp_canbus_service.h"
 

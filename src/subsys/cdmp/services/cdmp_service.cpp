@@ -1,8 +1,9 @@
 #include <zephyr/logging/log.h>
 
-#include "../models/cdmp_device.h"
-#include "cdmp_management_service/cdmp_management_service.h"
-#include "cdmp_command_service/cdmp_command_service.h"
+#include "subsys/cdmp/models/cdmp_device.h"
+#include "cdmp_network_service.h"
+#include "cdmp_heartbeat_service.h"
+#include "cdmp_command_service.h"
 #include "cdmp_state_service.h"
 
 #include "cdmp_service.h"
@@ -10,9 +11,6 @@
 LOG_MODULE_REGISTER(cdmp_service, LOG_LEVEL_INF);
 
 namespace eerie_leap::subsys::cdmp::services {
-
-using namespace eerie_leap::subsys::cdmp::services::cdmp_management_service;
-using namespace eerie_leap::subsys::cdmp::services::cdmp_command_service;
 
 CdmpService::CdmpService(
     std::shared_ptr<ITimeService> time_service,
@@ -40,11 +38,16 @@ CdmpService::CdmpService(
         work_queue_stack_size_,
         work_queue_priority_);
 
-    canbus_services_.emplace_back(std::make_unique<CdmpManagementService>(
-        canbus_, can_id_manager_, device_, time_service_, work_queue_thread_));
-    canbus_services_.emplace_back(std::make_unique<CdmpCommandService>(
+    auto network_service = std::make_shared<CdmpNetworkService>(
+        canbus_, can_id_manager_, device_, time_service_, work_queue_thread_);
+
+    canbus_services_.push_back(network_service);
+    canbus_services_.push_back(std::make_shared<CdmpHeartbeatService>(
+        canbus_, can_id_manager_, device_, work_queue_thread_, network_service));
+
+    canbus_services_.emplace_back(std::make_shared<CdmpCommandService>(
         canbus_, can_id_manager_, device_));
-    canbus_services_.emplace_back(std::make_unique<CdmpStateService>(
+    canbus_services_.emplace_back(std::make_shared<CdmpStateService>(
         canbus_, can_id_manager_, device_));
     // TODO: Add IsoTp Service
 }

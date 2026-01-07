@@ -7,9 +7,9 @@
 
 #include "subsys/threading/work_queue_thread.h"
 
-#include "../cdmp_canbus_service_base.h"
+#include "cdmp_canbus_service_base.h"
 #include "cdmp_network_service.h"
-namespace eerie_leap::subsys::cdmp::services::cdmp_management_service {
+namespace eerie_leap::subsys::cdmp::services {
 
 using namespace eerie_leap::subsys::threading;
 
@@ -22,15 +22,20 @@ private:
     bool is_heartbeat_task_running_ = false;
     static WorkQueueTaskResult ProcessPeriodicHeartbeat(CdmpHeartbeatService* instance);
 
+    int canbus_handler_id_ = -1;
+
     // Heartbeat configuration
     uint8_t heartbeat_sequence_number_ = 0;
     bool heartbeat_enabled_ = true;
+
+    void RegisterCanHandlers();
+    void UnregisterCanHandlers();
 
     void OnDeviceStatusChanged(CdmpDeviceStatus old_status, CdmpDeviceStatus new_status) override;
 
     void StartHeartbeatTask();
     void SendHeartbeat();
-    void ProcessHeartbeatFrame(std::span<const uint8_t> frame_data);
+    void ProcessFrame(uint32_t frame_id, std::span<const uint8_t> frame_data) override;
 
 public:
     CdmpHeartbeatService(
@@ -46,8 +51,6 @@ public:
     void Start() override;
     void Stop() override;
 
-    void ProcessFrame(uint32_t frame_id, std::span<const uint8_t> frame_data) override;
-
     // Heartbeat management
     void SetHeartbeatEnabled(bool enabled);
     bool IsHeartbeatEnabled() const { return heartbeat_enabled_; }
@@ -56,4 +59,4 @@ public:
     void PrintHeartbeatStatus() const;
 };
 
-} // namespace eerie_leap::subsys::cdmp::services::cdmp_management_service
+} // namespace eerie_leap::subsys::cdmp::services

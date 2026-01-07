@@ -154,9 +154,8 @@ struct CdmpIdClaimResponseMessage {
     }
 };
 
-// Base message structures (Base + 0)
+// Base message structures (Base + 1)
 struct CdmpHeartbeatMessage {
-    static constexpr CdmpManagementMessageType message_type = CdmpManagementMessageType::HEARTBEAT;
     uint8_t device_id;
     CdmpHealthStatus health_status;
     uint8_t sequence_number;
@@ -182,7 +181,6 @@ struct CdmpHeartbeatMessage {
 
     std::vector<uint8_t> ToCanFrame() const {
         std::vector<uint8_t> frame_data = {
-            std::to_underlying(message_type),
             device_id,
             std::to_underlying(health_status),
             sequence_number,

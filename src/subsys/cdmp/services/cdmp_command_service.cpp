@@ -4,7 +4,7 @@
 
 LOG_MODULE_REGISTER(cdmp_command_service, LOG_LEVEL_INF);
 
-namespace eerie_leap::subsys::cdmp::services::cdmp_command_service {
+namespace eerie_leap::subsys::cdmp::services {
 
 CdmpCommandService::CdmpCommandService(
     std::shared_ptr<Canbus> canbus,
@@ -182,4 +182,4 @@ bool CdmpCommandService::SendCommandAndWaitForResponse(
     return transaction_id != 0;
 }
 
-} // namespace eerie_leap::subsys::cdmp::services::cdmp_command_service
+} // namespace eerie_leap::subsys::cdmp::services

@@ -1,6 +1,6 @@
 #include <zephyr/logging/log.h>
 
-#include "../../types/cdmp_types.h"
+#include "subsys/cdmp/types/cdmp_types.h"
 #include "subsys/cdmp/utilities/cdmp_status_machine.h"
 
 #include "cdmp_network_service.h"
@@ -31,9 +31,10 @@ void CdmpNetworkService::Initialize() {
 }
 
 void CdmpNetworkService::Start() {
-    LOG_INF("CDMP Network Service started");
-
+    RegisterCanHandlers();
     StartValidationTask();
+
+    LOG_INF("CDMP Network Service started");
 }
 
 void CdmpNetworkService::Stop() {
@@ -42,6 +43,8 @@ void CdmpNetworkService::Stop() {
         validation_task_.value().Cancel();
 
     ClearAllDevices();
+    UnregisterCanHandlers();
+
     LOG_INF("CDMP Network Service stopped");
 }
 
@@ -50,6 +53,26 @@ void CdmpNetworkService::StartValidationTask() {
         validation_task_.value().Schedule();
         is_validation_task_running_ = true;
     }
+}
+
+void CdmpNetworkService::RegisterCanHandlers() {
+    canbus_handler_id_ = canbus_->RegisterFrameReceivedHandler(
+        can_id_manager_->GetManagementCanId(),
+        [this](const CanFrame& frame) { ProcessFrame(frame.id, frame.data); });
+
+    if(canbus_handler_id_ < 0) {
+        throw std::runtime_error("Failed to register CAN frame handler for frame ID: "
+            + std::to_string(can_id_manager_->GetManagementCanId()));
+    }
+}
+
+void CdmpNetworkService::UnregisterCanHandlers() {
+    if(!canbus_)
+        return;
+
+    if(canbus_handler_id_ >= 0)
+        canbus_->RemoveFrameReceivedHandler(can_id_manager_->GetManagementCanId(), canbus_handler_id_);
+    canbus_handler_id_ = -1;
 }
 
 void CdmpNetworkService::OnDeviceStatusChanged(CdmpDeviceStatus old_status, CdmpDeviceStatus new_status) {

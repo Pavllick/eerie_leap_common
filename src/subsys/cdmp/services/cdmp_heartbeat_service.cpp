@@ -5,7 +5,7 @@
 
 LOG_MODULE_REGISTER(cdmp_heartbeat_service, LOG_LEVEL_INF);
 
-namespace eerie_leap::subsys::cdmp::services::cdmp_management_service {
+namespace eerie_leap::subsys::cdmp::services {
 
 CdmpHeartbeatService::CdmpHeartbeatService(
     std::shared_ptr<Canbus> canbus,
@@ -27,6 +27,7 @@ void CdmpHeartbeatService::Initialize() {
 }
 
 void CdmpHeartbeatService::Start() {
+    RegisterCanHandlers();
     StartHeartbeatTask();
 }
 
@@ -35,16 +36,38 @@ void CdmpHeartbeatService::Stop() {
     if(heartbeat_task_.has_value())
         heartbeat_task_.value().Cancel();
 
+    UnregisterCanHandlers();
+
     LOG_INF("CDMP Heartbeat Service stopped");
 }
 
 void CdmpHeartbeatService::StartHeartbeatTask() {
     if(heartbeat_enabled_ && !is_heartbeat_task_running_ && device_->GetStatus() == CdmpDeviceStatus::ONLINE) {
-        LOG_INF("CDMP Heartbeat Service started, interval: %d ms", CdmpConstants::HEARTBEAT_INTERVAL_MS);
-
         heartbeat_task_.value().Schedule();
         is_heartbeat_task_running_ = true;
+
+        LOG_INF("CDMP Heartbeat Service started, interval: %d ms", CdmpConstants::HEARTBEAT_INTERVAL_MS);
     }
+}
+
+void CdmpHeartbeatService::RegisterCanHandlers() {
+    canbus_handler_id_ = canbus_->RegisterFrameReceivedHandler(
+        can_id_manager_->GetHeartbeatCanId(),
+        [this](const CanFrame& frame) { ProcessFrame(frame.id, frame.data); });
+
+    if(canbus_handler_id_ < 0) {
+        throw std::runtime_error("Failed to register CAN frame handler for frame ID: "
+            + std::to_string(can_id_manager_->GetHeartbeatCanId()));
+    }
+}
+
+void CdmpHeartbeatService::UnregisterCanHandlers() {
+    if(!canbus_)
+        return;
+
+    if(canbus_handler_id_ >= 0)
+        canbus_->RemoveFrameReceivedHandler(can_id_manager_->GetHeartbeatCanId(), canbus_handler_id_);
+    canbus_handler_id_ = -1;
 }
 
 void CdmpHeartbeatService::OnDeviceStatusChanged(CdmpDeviceStatus old_status, CdmpDeviceStatus new_status) {
@@ -66,16 +89,6 @@ void CdmpHeartbeatService::OnDeviceStatusChanged(CdmpDeviceStatus old_status, Cd
 }
 
 void CdmpHeartbeatService::ProcessFrame(uint32_t frame_id, std::span<const uint8_t> frame_data) {
-    CdmpManagementMessageType message_type = static_cast<CdmpManagementMessageType>(frame_data[0]);
-
-    switch(message_type) {
-        case CdmpManagementMessageType::HEARTBEAT:
-            ProcessHeartbeatFrame(frame_data);
-            break;
-    }
-}
-
-void CdmpHeartbeatService::ProcessHeartbeatFrame(std::span<const uint8_t> frame_data) {
     try {
         CdmpHeartbeatMessage heartbeat = CdmpHeartbeatMessage::FromCanFrame(frame_data);
         network_service_->UpdateDeviceFromHeartbeat(heartbeat);
@@ -135,4 +148,4 @@ void CdmpHeartbeatService::PrintHeartbeatStatus() const {
     LOG_INF("  Interval: %d ms", CdmpConstants::HEARTBEAT_INTERVAL_MS);
 }
 
-} // namespace eerie_leap::subsys::cdmp::services::cdmp_management_service
+} // namespace eerie_leap::subsys::cdmp::services

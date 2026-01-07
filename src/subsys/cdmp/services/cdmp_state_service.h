@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../models/cdmp_message.h"
+#include "subsys/cdmp/models/cdmp_message.h"
 
 #include "cdmp_canbus_service_base.h"
 

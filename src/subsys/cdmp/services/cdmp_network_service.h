@@ -8,7 +8,7 @@
 
 #include "subsys/threading/work_queue_thread.h"
 
-#include "../cdmp_canbus_service_base.h"
+#include "cdmp_canbus_service_base.h"
 
 
 namespace eerie_leap::subsys::cdmp::services {
@@ -24,6 +24,8 @@ private:
     bool is_validation_task_running_ = false;
     static WorkQueueTaskResult ProcessPeriodicValidation(CdmpNetworkService* instance);
 
+    int canbus_handler_id_ = -1;
+
     std::unordered_map<uint8_t, std::unique_ptr<CdmpDevice>> network_devices_;
     uint8_t lowest_id_on_network_ = 0;
 
@@ -33,6 +35,9 @@ private:
     bool discovery_response_received_ = false;
     uint8_t claiming_device_id_ = 0;
     std::optional<CdmpIdClaimResult> id_claim_result_ = std::nullopt;
+
+    void RegisterCanHandlers();
+    void UnregisterCanHandlers();
 
     void OnDeviceStatusChanged(CdmpDeviceStatus old_status, CdmpDeviceStatus new_status) override;
 

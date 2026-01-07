@@ -74,7 +74,7 @@ A lightweight management protocol operating on CAN bus alongside standard DBC-de
 
 ```
 Base + 0:    Management broadcasts (discovery, heartbeat, announcements)
-Base + 1:    Status broadcasts (generic device status, time-slotted)
+Base + 1:    Heartbeat broadcast
 Base + 2:    Command requests (settings, actions)
 Base + 3:    Command responses (ACKs, results)
 Base + 4:    State change notifications
@@ -259,18 +259,20 @@ Byte 7:    Reserved
 
 If a device receives a discovery response with its own UID, it shall enter ERROR status immediately and cease all protocol transmissions.
 
-### 3.4 Heartbeat
+-----
+
+## 4. Message Types and Formats
+
+### 4.1 Heartbeat broadcast (CAN ID Base + 1)
 
 Each device sends periodic heartbeat to indicate liveness.
 
-**Heartbeat Message (CAN ID Base + 0)**
-
 ```
-Byte 0:    Message Type = 0x05 (HEARTBEAT)
-Byte 1:    Device ID
-Byte 2:    Health Status (0x00=OK, 0x01=Warning, 0x02=Error)
-Byte 3:    Uptime Counter (rolls over at 255)
-Byte 4-7:  Capability Flags (32 bits, LSB first)
+Byte 0:    Device ID
+Byte 1:    Health Status (0x00=OK, 0x01=Warning, 0x02=Error)
+Byte 2:    Uptime Counter (rolls over at 255)
+Byte 3-6:  Capability Flags (32 bits, LSB first)
+Byte 7:    Reserved
 ```
 
 **Note:** See section 14 for details on capability flags.
@@ -280,31 +282,6 @@ Byte 4-7:  Capability Flags (32 bits, LSB first)
 - **Interval**: 1-5 seconds (configurable per device)
 - **Timeout**: 3× heartbeat interval (missing 3 consecutive = presumed offline)
 - **Purpose**: Liveness indication and capability advertisement
-
------
-
-## 4. Message Types and Formats
-
-### 4.1 Status Broadcasts (CAN ID Base + 1)
-
-**Purpose**: Periodic generic device status, non-critical data
-
-**Message Format:**
-
-```
-Byte 0:    Device ID
-Byte 1:    Sequence Number (0-255, rolls over)
-Byte 2-7:  Status Data (application-specific)
-```
-
-**Timing:**
-
-- **Base frequency**: 1 Hz (configurable 0.1-10 Hz)
-- **Time-slotting**: Offset = Device_ID × (Period / Max_Devices)
-  - Example: 1 Hz, 5 devices → Device 1 at 0ms, Device 2 at 200ms, etc.
-- **No acknowledgment required**
-
-**Note:** For capability-specific status (logging, GPS, etc.), use dedicated capability CAN IDs (Base + 20+) instead.
 
 ### 4.2 Command Messages
 
@@ -1007,7 +984,7 @@ Devices can implement application-defined capabilities that are automatically di
 
 ### 14.2 Capability Discovery
 
-**Heartbeat Capability Flags (Bytes 4-7 of Heartbeat message):**
+**Heartbeat Capability Flags (Bytes 3-6 of Heartbeat message):**
 
 ```
 Bits 0-31: Application-defined capability flags (32 bits, LSB first)
@@ -1154,7 +1131,6 @@ Applications can define capability-specific commands using the standard command 
 | ID_CLAIM_RESPONSE | 0x02 | Response to ID claim (conflict) |
 | DISCOVERY_REQUEST | 0x03 | Request network enumeration |
 | DISCOVERY_RESPONSE | 0x04 | Response with device info |
-| HEARTBEAT | 0x05 | Periodic liveness indication |
 
 ### ID Claim Response Result Codes (Base + 0)
 
@@ -1201,12 +1177,12 @@ Applications can define capability-specific commands using the standard command 
 ### B.1 Device Startup and ID Assignment
 ```
 New Device:
-  → Discovery Request (Base + 0): [0x03][0x00]...[0x00]
+  → Discovery Request (Base + 0): [0x03][UID_0]
   
 Existing Devices (staggered 5-10ms):
-  ← Discovery Response (Base + 0): [0x04][ID_1][UID_1]...[Type_1][0x00]
-  ← Discovery Response (Base + 0): [0x04][ID_2][UID_2]...[Type_2][0x00]
-  ← Discovery Response (Base + 0): [0x04][ID_5][UID_5]...[Type_5][0x00]
+  ← Discovery Response (Base + 0): [0x04][ID_1][UID_1]...[Type_1][
+  ← Discovery Response (Base + 0): [0x04][ID_2][UID_2]...[Type_2][
+  ← Discovery Response (Base + 0): [0x04][ID_5][UID_5]...[Type_5][
 
 New Device (selects ID=3, fills gap):
   → ID Claim (Base + 0): [0x01][0x03][UID_New]...[Type][Ver]
@@ -1214,7 +1190,7 @@ New Device (selects ID=3, fills gap):
   Wait 50ms for objections...
   
 New Device:
-  → Heartbeat (Base + 0): [0x05][0x03][0x00][Uptime][Caps...]
+  → Heartbeat (Base + 1): [0x03][0x00][Uptime][Caps...]
   Begin normal operation
 ```
 

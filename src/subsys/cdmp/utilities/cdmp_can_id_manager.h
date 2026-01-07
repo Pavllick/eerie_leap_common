@@ -12,7 +12,7 @@ private:
 public:
     static constexpr uint32_t DEFAULT_BASE_CAN_ID = 0x700;
     static constexpr uint32_t MANAGEMENT_OFFSET = 0;
-    static constexpr uint32_t STATUS_OFFSET = 1;
+    static constexpr uint32_t HEARTBEAT_OFFSET = 1;
     static constexpr uint32_t COMMAND_OFFSET = 2;
     static constexpr uint32_t COMMAND_RESPONSE_OFFSET = 3;
     static constexpr uint32_t STATE_CHANGE_OFFSET = 4;
@@ -30,11 +30,10 @@ public:
     uint32_t GetBaseCanId() const { return base_can_id_; }
 
     uint32_t GetManagementCanId() const { return base_can_id_ + MANAGEMENT_OFFSET; }
-    uint32_t GetHeartbeatCanId() const { return GetManagementCanId(); }
     uint32_t GetDiscoveryRequestCanId() const { return GetManagementCanId(); }
     uint32_t GetDiscoveryResponseCanId() const { return GetManagementCanId(); }
 
-    uint32_t GetStatusCanId() const { return base_can_id_ + STATUS_OFFSET; }
+    uint32_t GetHeartbeatCanId() const { return base_can_id_ + HEARTBEAT_OFFSET; }
 
     uint32_t GetCommandCanId() const { return base_can_id_ + COMMAND_OFFSET; }
     uint32_t GetCommandResponseCanId() const { return base_can_id_ + COMMAND_RESPONSE_OFFSET; }

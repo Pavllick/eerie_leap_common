@@ -4,10 +4,10 @@
 #include <vector>
 #include <unordered_map>
 
-#include "../../models/cdmp_message.h"
-#include "../cdmp_canbus_service_base.h"
+#include "subsys/cdmp/models/cdmp_message.h"
+#include "subsys/cdmp/services/cdmp_canbus_service_base.h"
 
-namespace eerie_leap::subsys::cdmp::services::cdmp_command_service {
+namespace eerie_leap::subsys::cdmp::services {
 
 using CommandHandler = std::function<void(const CdmpCommandMessage&, uint8_t transaction_id)>;
 
@@ -52,4 +52,4 @@ public:
         uint64_t timeout = K_SECONDS(1).ticks);
 };
 
-} // namespace eerie_leap::subsys::cdmp::services::cdmp_command_service
+} // namespace eerie_leap::subsys::cdmp::services

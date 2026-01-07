@@ -10,11 +10,12 @@
 #include <subsys/threading/thread.h>
 #include "subsys/threading/work_queue_thread.h"
 
-#include "../utilities/cdmp_can_id_manager.h"
-#include "../models/cdmp_device.h"
-#include "../models/cdmp_message.h"
+#include "subsys/cdmp/utilities/cdmp_can_id_manager.h"
+#include "subsys/cdmp/models/cdmp_device.h"
+#include "subsys/cdmp/models/cdmp_message.h"
 
 #include "i_cdmp_canbus_service.h"
+#include "cdmp_service.h"
 
 namespace eerie_leap::subsys::cdmp::services {
 
@@ -41,7 +42,7 @@ private:
     std::shared_ptr<Canbus> canbus_;
     std::shared_ptr<CdmpCanIdManager> can_id_manager_;
 
-    std::vector<std::unique_ptr<ICdmpCanbusService>> canbus_services_;
+    std::vector<std::shared_ptr<ICdmpCanbusService>> canbus_services_;
 
     // Device registry for tracking other devices on network
     std::unordered_map<uint8_t, std::unique_ptr<CdmpDevice>> network_devices_;
