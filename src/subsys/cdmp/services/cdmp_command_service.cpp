@@ -33,7 +33,7 @@ void CdmpCommandService::RegisterCanHandlers() {
     if (!canbus_) return;
 
     canbus_handler_id_ = canbus_->RegisterFrameReceivedHandler(
-        can_id_manager_->GetCommandCanId(),
+        can_id_manager_->GetCommandRequestCanId(),
         [this](const CanFrame& frame) { ProcessRequestFrame(frame.data); });
 
     canbus_response_handler_id_ = canbus_->RegisterFrameReceivedHandler(
@@ -45,7 +45,7 @@ void CdmpCommandService::UnregisterCanHandlers() {
     if (!canbus_) return;
 
     if (canbus_handler_id_ >= 0) {
-        canbus_->RemoveFrameReceivedHandler(can_id_manager_->GetCommandCanId(), canbus_handler_id_);
+        canbus_->RemoveFrameReceivedHandler(can_id_manager_->GetCommandRequestCanId(), canbus_handler_id_);
         canbus_handler_id_ = -1;
     }
 
@@ -157,7 +157,7 @@ uint8_t CdmpCommandService::SendCommand(
         };
 
         auto frame_data = command.ToCanFrame();
-        uint32_t frame_id = can_id_manager_->GetCommandCanId();
+        uint32_t frame_id = can_id_manager_->GetCommandRequestCanId();
         canbus_->SendFrame(frame_id, frame_data);
 
         LOG_DBG("Sent command %d to device %d, transaction %d",

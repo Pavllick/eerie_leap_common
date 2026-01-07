@@ -32,13 +32,15 @@ public:
     uint32_t GetManagementCanId() const { return base_can_id_ + MANAGEMENT_OFFSET; }
     uint32_t GetDiscoveryRequestCanId() const { return GetManagementCanId(); }
     uint32_t GetDiscoveryResponseCanId() const { return GetManagementCanId(); }
+    uint32_t GetIdClaimRequestCanId() const { return GetManagementCanId(); }
+    uint32_t GetIdClaimResponseCanId() const { return GetManagementCanId(); }
 
     uint32_t GetHeartbeatCanId() const { return base_can_id_ + HEARTBEAT_OFFSET; }
 
-    uint32_t GetCommandCanId() const { return base_can_id_ + COMMAND_OFFSET; }
+    uint32_t GetCommandRequestCanId() const { return base_can_id_ + COMMAND_OFFSET; }
     uint32_t GetCommandResponseCanId() const { return base_can_id_ + COMMAND_RESPONSE_OFFSET; }
 
-    uint32_t GetStateChangeCanId() const { return base_can_id_ + STATE_CHANGE_OFFSET; }
+    uint32_t GetStateChangeRequestCanId() const { return base_can_id_ + STATE_CHANGE_OFFSET; }
     uint32_t GetStateChangeResponseCanId() const { return base_can_id_ + STATE_CHANGE_RESPONSE_OFFSET; }
 
     uint32_t GetIsoTpRequestCanId() const { return base_can_id_ + ISOTP_REQUEST_OFFSET; }

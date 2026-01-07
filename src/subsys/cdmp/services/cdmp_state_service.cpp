@@ -33,7 +33,7 @@ void CdmpStateService::RegisterCanHandlers() {
     if (!canbus_) return;
 
     state_change_handler_id_ = canbus_->RegisterFrameReceivedHandler(
-        can_id_manager_->GetStateChangeCanId(),
+        can_id_manager_->GetStateChangeRequestCanId(),
         [this](const CanFrame& frame) { ProcessRequestFrame(frame); });
 
     state_change_response_handler_id_ = canbus_->RegisterFrameReceivedHandler(
@@ -45,7 +45,7 @@ void CdmpStateService::UnregisterCanHandlers() {
     if (!canbus_) return;
 
     if (state_change_handler_id_ >= 0) {
-        canbus_->RemoveFrameReceivedHandler(can_id_manager_->GetStateChangeCanId(), state_change_handler_id_);
+        canbus_->RemoveFrameReceivedHandler(can_id_manager_->GetStateChangeRequestCanId(), state_change_handler_id_);
         state_change_handler_id_ = -1;
     }
 
@@ -104,7 +104,7 @@ void CdmpStateService::SendStateChangeNotification(uint8_t target_device_id, Cdm
         // };
 
         // CanFrame frame = state_change.ToCanFrame();
-        // uint32_t can_id = can_id_manager_->GetStateChangeCanId();
+        // uint32_t can_id = can_id_manager_->GetStateChangeRequestCanId();
         // canbus_->SendFrame(can_id, frame);
 
         LOG_DBG("Sent state change notification to device %d: %d -> %d",

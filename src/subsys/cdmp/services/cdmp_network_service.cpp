@@ -242,7 +242,7 @@ void CdmpNetworkService::SendIdClaim() {
         message.protocol_version = device_->GetProtocolVersion();
 
         auto frame_data = message.ToCanFrame();
-        uint32_t frame_id = can_id_manager_->GetManagementCanId();
+        uint32_t frame_id = can_id_manager_->GetIdClaimRequestCanId();
         canbus_->SendFrame(frame_id, frame_data);
         LOG_INF("Sent ID claim for device %d", message.claiming_device_id);
 
@@ -309,7 +309,7 @@ void CdmpNetworkService::ProcessIdClaimRequestFrame(std::span<const uint8_t> fra
 
         if(send_response) {
             auto frame_data = message.ToCanFrame();
-            uint32_t response_id = can_id_manager_->GetManagementCanId();
+            uint32_t response_id = can_id_manager_->GetIdClaimResponseCanId();
             canbus_->SendFrame(response_id, frame_data);
 
             return;
