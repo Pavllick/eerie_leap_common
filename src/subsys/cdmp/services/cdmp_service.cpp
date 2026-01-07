@@ -28,7 +28,7 @@ CdmpService::CdmpService(
     if(canbus_ == nullptr)
         throw std::runtime_error("Canbus interface is null");
 
-    can_id_manager_ = std::make_shared<CdmpCanIdManager>();
+    can_id_manager_ = std::make_shared<CdmpCanIdManager>(base_can_id_);
     device_ = std::make_shared<CdmpDevice>(time_service_, uid, device_type);
 
     thread_ = std::make_unique<Thread>(
@@ -105,77 +105,8 @@ bool CdmpService::IsRunning() const {
     return is_running_;
 }
 
-uint8_t CdmpService::GetNextTransactionId() {
-    uint8_t transaction_id = next_transaction_id_;
-    next_transaction_id_ = (next_transaction_id_ + 1) % 256;
-    if(next_transaction_id_ == 0)
-        next_transaction_id_ = 1; // Skip 0
-
-    return transaction_id;
-}
-
-void CdmpService::StartTransaction(uint8_t transaction_id) {
-    pending_transactions_[transaction_id] = k_uptime_get();
-}
-
-void CdmpService::CompleteTransaction(uint8_t transaction_id) {
-    pending_transactions_.erase(transaction_id);
-}
-
-void CdmpService::CleanupExpiredTransactions() {
-    uint64_t current_time = k_uptime_get();
-
-    auto it = pending_transactions_.begin();
-    while(it != pending_transactions_.end()) {
-        if(current_time > (it->second + TRANSACTION_TIMEOUT)) {
-            LOG_WRN("Transaction %d timed out", it->first);
-            it = pending_transactions_.erase(it);
-        } else {
-            ++it;
-        }
-    }
-}
-
 void CdmpService::SetAutoDiscovery(bool enabled) {
     auto_discovery_enabled_ = enabled;
-}
-
-std::vector<uint8_t> CdmpService::GetOnlineDeviceIds() const {
-    std::vector<uint8_t> online_ids;
-
-    for(const auto& pair : network_devices_) {
-        if(pair.second && pair.second->IsOnline())
-            online_ids.push_back(pair.first);
-    }
-
-    return online_ids;
-}
-
-CdmpDevice& CdmpService::GetDevice() const {
-    return *device_;
-}
-
-const CdmpDevice* CdmpService::GetDevice(uint8_t device_id) const {
-    if(!network_devices_.contains(device_id))
-        return nullptr;
-
-    return network_devices_.at(device_id).get();
-}
-
-void CdmpService::PrintNetworkStatus() const {
-    LOG_INF("CDMP Network Status:");
-    LOG_INF("  Local Device ID: %d", device_->GetDeviceId());
-    LOG_INF("  Local Device Status: %d", static_cast<int>(device_->GetStatus()));
-    LOG_INF("  Online Devices: %zu", network_devices_.size());
-
-    for(const auto& pair : network_devices_) {
-        const auto& device = pair.second;
-        if(device) {
-            LOG_INF("    Device %d: Status=%d, Type=%d, UID=0x%08X",
-                    pair.first, static_cast<int>(device->GetStatus()),
-                    std::to_underlying(device->GetDeviceType()), device->GetUniqueIdentifier());
-        }
-    }
 }
 
 void CdmpService::PrintDeviceStatus() const {
@@ -193,11 +124,6 @@ void CdmpService::PrintDeviceStatus() const {
     LOG_INF("  Health: %d", static_cast<int>(device_->GetHealthStatus()));
     LOG_INF("  Capability Flags: 0x%08X", device_->GetCapabilityFlags());
     LOG_INF("  Uptime: %d", device_->GetUptimeCounter());
-}
-
-WorkQueueTaskResult CdmpService::ProcessCdmpTask(void* task_data) {
-    // This would be implemented to handle periodic tasks
-    return WorkQueueTaskResult{};
 }
 
 } // namespace eerie_leap::subsys::cdmp::services

@@ -235,7 +235,7 @@ void CdmpNetworkService::SendIdClaim() {
     }
 
     for(int i = 0; i < CdmpConstants::ID_CLAIM_MAX_ATTEMPTS; ++i) {
-        CdmpIdClaimMessage message = {};
+        CdmpIdClaimRequestMessage message = {};
         message.claiming_device_id = claiming_device_id_;
         message.uid = device_->GetUniqueIdentifier();
         message.device_type = device_->GetDeviceType();
@@ -279,7 +279,7 @@ void CdmpNetworkService::ProcessIdClaimRequestFrame(std::span<const uint8_t> fra
         if(!device_->IsOnline())
             return;
 
-        CdmpIdClaimMessage id_claim_message = CdmpIdClaimMessage::FromCanFrame(frame_data);
+        CdmpIdClaimRequestMessage id_claim_message = CdmpIdClaimRequestMessage::FromCanFrame(frame_data);
         LOG_INF("Received ID claim from device %d", id_claim_message.claiming_device_id);
 
         CdmpIdClaimResponseMessage message = {};

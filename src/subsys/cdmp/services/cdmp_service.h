@@ -24,9 +24,6 @@ using namespace eerie_leap::subsys::threading;
 using namespace eerie_leap::subsys::cdmp::models;
 using namespace eerie_leap::subsys::cdmp::utilities;
 
-using CommandHandler = std::function<void(const CdmpCommandMessage&, uint8_t transaction_id)>;
-using CapabilityDataGenerator = std::function<std::vector<uint8_t>()>;
-
 class CdmpService : public IThread {
 private:
     static constexpr int k_stack_size_ = 4096;
@@ -44,38 +41,12 @@ private:
 
     std::vector<std::shared_ptr<ICdmpCanbusService>> canbus_services_;
 
-    // Device registry for tracking other devices on network
-    std::unordered_map<uint8_t, std::unique_ptr<CdmpDevice>> network_devices_;
-
-    // Transaction management
-    uint8_t next_transaction_id_ = 1;
-    std::unordered_map<uint8_t, uint64_t> pending_transactions_;
-    static constexpr uint64_t TRANSACTION_TIMEOUT = K_MSEC(500).ticks;
-
     // Configuration
     bool is_running_ = false;
     uint32_t base_can_id_;
     bool auto_discovery_enabled_ = true;
 
-    // Timing
-    uint64_t last_status_broadcast_ = 0;
-    uint64_t status_broadcast_interval_ = DEFAULT_STATUS_BROADCAST_INTERVAL;
-    uint8_t status_sequence_number_ = 0;
-
     void ThreadEntry() override;
-
-    // Transaction management
-    uint8_t GetNextTransactionId();
-    void StartTransaction(uint8_t transaction_id);
-    void CompleteTransaction(uint8_t transaction_id);
-    void CleanupExpiredTransactions();
-
-    // Work queue tasks
-    static WorkQueueTaskResult ProcessCdmpTask(void* task_data);
-    void ProcessPeriodicTasks();
-    void ProcessStateTimeouts();
-    void ProcessTransactionTimeouts();
-    void ProcessHeartbeatTimeouts();
 
 public:
     CdmpService(
@@ -96,40 +67,8 @@ public:
     void SetAutoDiscovery(bool enabled);
     void SetDeviceType(CdmpDeviceType device_type);
 
-    // Direct command sending
-    uint8_t SendCommand(
-        uint8_t target_device_id,
-        CdmpCommandCode command_code,
-        const std::vector<uint8_t>& parameters = {});
-    bool SendCommandAndWaitForResponse(
-        uint8_t target_device_id,
-        CdmpCommandCode command_code,
-        const std::vector<uint8_t>& parameters,
-        CdmpCommandResponse& response,
-        uint64_t timeout = K_SECONDS(1).ticks);
-
-    // Configuration management
-    bool ReadRemoteConfig(uint8_t target_device_id,
-        CdmpConfigType config_type,
-        std::vector<uint8_t>& config_data);
-    bool WriteRemoteConfig(uint8_t target_device_id,
-        CdmpConfigType config_type,
-        const std::vector<uint8_t>& config_data);
-    uint32_t GetRemoteConfigCrc(uint8_t target_device_id, CdmpConfigType config_type);
-
-    // Network information
-    CdmpDevice& GetDevice() const;
-    const CdmpDevice* GetDevice(uint8_t device_id) const;
-    std::vector<uint8_t> GetOnlineDeviceIds() const;
-    size_t GetDeviceCount() const { return network_devices_.size(); }
-
     // Diagnostics
-    void PrintNetworkStatus() const;
     void PrintDeviceStatus() const;
-
-    // Constants
-    static constexpr uint64_t DEFAULT_HEARTBEAT_INTERVAL = K_SECONDS(3).ticks;
-    static constexpr uint64_t DEFAULT_STATUS_BROADCAST_INTERVAL = K_SECONDS(1).ticks;
 };
 
 } // namespace eerie_leap::subsys::cdmp::services

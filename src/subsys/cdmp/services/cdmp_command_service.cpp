@@ -57,7 +57,7 @@ void CdmpCommandService::UnregisterCanHandlers() {
 
 void CdmpCommandService::ProcessRequestFrame(std::span<const uint8_t> frame_data) {
     try {
-        CdmpCommandMessage command = CdmpCommandMessage::FromCanFrame(frame_data);
+        CdmpCommandRequestMessage command = CdmpCommandRequestMessage::FromCanFrame(frame_data);
 
         if(command.target_device_id != device_->GetDeviceId()
             && command.target_device_id != CdmpDevice::DEVICE_ID_BROADCAST) {
@@ -84,7 +84,7 @@ void CdmpCommandService::ProcessRequestFrame(std::span<const uint8_t> frame_data
             LOG_WRN("No handler registered for command %d", std::to_underlying(command.command_code));
 
             // Send error response
-            CdmpCommandResponse response{
+            CdmpCommandResponseMessage response{
                 .source_device_id = device_->GetDeviceId(),
                 // .target_device_id = command.source_device_id,
                 .command_code = command.command_code,
@@ -101,7 +101,7 @@ void CdmpCommandService::ProcessRequestFrame(std::span<const uint8_t> frame_data
 
 void CdmpCommandService::ProcessResponseFrame(std::span<const uint8_t> frame_data) {
     try {
-        CdmpCommandResponse response = CdmpCommandResponse::FromCanFrame(frame_data);
+        CdmpCommandResponseMessage response = CdmpCommandResponseMessage::FromCanFrame(frame_data);
         LOG_DBG("Received command response for transaction %d, code %d",
                response.transaction_id, std::to_underlying(response.result_code));
 
@@ -111,7 +111,7 @@ void CdmpCommandService::ProcessResponseFrame(std::span<const uint8_t> frame_dat
     }
 }
 
-void CdmpCommandService::SendCommandResponse(const CdmpCommandResponse& response) {
+void CdmpCommandService::SendCommandResponse(const CdmpCommandResponseMessage& response) {
     if(!canbus_)
         return;
 
@@ -148,7 +148,7 @@ uint8_t CdmpCommandService::SendCommand(
         // Transaction ID generation would be delegated to transaction service
         uint8_t transaction_id = 1; // Placeholder
 
-        CdmpCommandMessage command{
+        CdmpCommandRequestMessage command{
             // .source_device_id = device_->GetDeviceId(),
             .target_device_id = target_device_id,
             .command_code = command_code,
@@ -174,7 +174,7 @@ bool CdmpCommandService::SendCommandAndWaitForResponse(
     uint8_t target_device_id,
     CdmpCommandCode command_code,
     const std::vector<uint8_t>& data,
-    CdmpCommandResponse& response,
+    CdmpCommandResponseMessage& response,
     uint64_t timeout) {
 
     // This would integrate with transaction service for proper wait/response handling

@@ -9,7 +9,7 @@
 
 namespace eerie_leap::subsys::cdmp::services {
 
-using CommandHandler = std::function<void(const CdmpCommandMessage&, uint8_t transaction_id)>;
+using CommandHandler = std::function<void(const CdmpCommandRequestMessage&, uint8_t transaction_id)>;
 
 class CdmpCommandService : public CdmpCanbusServiceBase {
 private:
@@ -24,7 +24,7 @@ private:
 
     void ProcessRequestFrame(std::span<const uint8_t> frame_data);
     void ProcessResponseFrame(std::span<const uint8_t> frame_data);
-    void SendCommandResponse(const CdmpCommandResponse& response);
+    void SendCommandResponse(const CdmpCommandResponseMessage& response);
 
 public:
     CdmpCommandService(
@@ -48,7 +48,7 @@ public:
         uint8_t target_device_id,
         CdmpCommandCode command_code,
         const std::vector<uint8_t>& data,
-        CdmpCommandResponse& response,
+        CdmpCommandResponseMessage& response,
         uint64_t timeout = K_SECONDS(1).ticks);
 };
 

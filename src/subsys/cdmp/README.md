@@ -503,7 +503,7 @@ Byte 3-7:  State Data
 0x10-0xFF: Application-specific state changes
 ```
 
-**Response (CAN ID Base + 5):**
+**State Change Response (CAN ID Base + 5):**
 
 ```
 Byte 0:    Source Device ID
