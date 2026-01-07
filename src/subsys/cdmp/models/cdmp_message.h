@@ -162,19 +162,16 @@ struct CdmpHeartbeatMessage {
     uint32_t capability_flags;
 
     static CdmpHeartbeatMessage FromCanFrame(std::span<const uint8_t> frame_data) {
-        if(frame_data[0] != static_cast<uint8_t>(CdmpManagementMessageType::HEARTBEAT))
-            throw std::invalid_argument("Incorrect message type");
-
         CdmpHeartbeatMessage message = {};
-        message.device_id = frame_data[1];
-        message.health_status = static_cast<CdmpHealthStatus>(frame_data[2]);
-        message.sequence_number = frame_data[3];
+        message.device_id = frame_data[0];
+        message.health_status = static_cast<CdmpHealthStatus>(frame_data[1]);
+        message.sequence_number = frame_data[2];
         // Extract 32-bit capability flags (LSB first)
         message.capability_flags =
-            (static_cast<uint32_t>(frame_data[7]) << 24)
-            | (static_cast<uint32_t>(frame_data[6]) << 16)
-            | (static_cast<uint32_t>(frame_data[5]) << 8)
-            | static_cast<uint32_t>(frame_data[4]);
+            (static_cast<uint32_t>(frame_data[6]) << 24)
+            | (static_cast<uint32_t>(frame_data[5]) << 16)
+            | (static_cast<uint32_t>(frame_data[4]) << 8)
+            | static_cast<uint32_t>(frame_data[3]);
 
         return message;
     }
