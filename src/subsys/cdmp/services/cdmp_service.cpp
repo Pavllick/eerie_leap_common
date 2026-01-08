@@ -12,23 +12,18 @@ LOG_MODULE_REGISTER(cdmp_service, LOG_LEVEL_INF);
 namespace eerie_leap::subsys::cdmp::services {
 
 CdmpService::CdmpService(
-    std::shared_ptr<ITimeService> time_service,
     std::shared_ptr<Canbus> canbus,
     CdmpDeviceType device_type,
     uint32_t uid,
     uint32_t base_can_id)
-        : time_service_(std::move(time_service)),
-        canbus_(std::move(canbus)),
+        : canbus_(std::move(canbus)),
         base_can_id_(base_can_id) {
-
-    if(time_service_ == nullptr)
-        throw std::runtime_error("Time service is null");
 
     if(canbus_ == nullptr)
         throw std::runtime_error("Canbus interface is null");
 
     can_id_manager_ = std::make_shared<CdmpCanIdManager>(base_can_id_);
-    device_ = std::make_shared<CdmpDevice>(time_service_, uid, device_type);
+    device_ = std::make_shared<CdmpDevice>(uid, device_type);
 
     thread_ = std::make_unique<Thread>(
         "cdmp_service_thread", this, k_stack_size_, k_priority_);
@@ -38,7 +33,7 @@ CdmpService::CdmpService(
         work_queue_priority_);
 
     auto network_service = std::make_shared<CdmpNetworkService>(
-        canbus_, can_id_manager_, device_, time_service_, work_queue_thread_);
+        canbus_, can_id_manager_, device_, work_queue_thread_);
     canbus_services_.push_back(network_service);
 
     canbus_services_.emplace_back(std::make_shared<CdmpHeartbeatService>(

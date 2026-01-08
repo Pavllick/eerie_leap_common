@@ -4,14 +4,10 @@
 #include <chrono>
 #include <zephyr/kernel.h>
 
-#include "subsys/time/i_time_service.h"
-
 #include "../types/cdmp_types.h"
 #include "../utilities/cdmp_status_machine.h"
 
 namespace eerie_leap::subsys::cdmp::models {
-
-using namespace eerie_leap::subsys::time;
 
 using namespace eerie_leap::subsys::cdmp::types;
 using namespace eerie_leap::subsys::cdmp::utilities;
@@ -31,15 +27,13 @@ enum class CdmpDeviceCapabilityFlags : uint32_t {
 
 class CdmpDevice {
 private:
-    std::shared_ptr<ITimeService> time_service_;
-
     uint8_t device_id_ = DEVICE_ID_UNASSIGNED;
     uint32_t uid_ = 0;
     CdmpDeviceType device_type_ = CdmpDeviceType::NONE;
     uint8_t protocol_version_;
     CdmpHealthStatus health_status_ = CdmpHealthStatus::OK;
     uint32_t capability_flags_ = 0;
-    system_clock::time_point last_heartbeat_;
+    uint64_t last_heartbeat_;
     uint8_t uptime_counter_ = 0;
 
     std::shared_ptr<CdmpStatusMachine> status_machine_;
@@ -49,7 +43,6 @@ public:
     static constexpr uint8_t DEVICE_ID_BROADCAST = 0xFF;
 
     CdmpDevice(
-        std::shared_ptr<ITimeService> time_service,
         uint32_t uid,
         CdmpDeviceType device_type,
         CdmpDeviceStatus status = CdmpDeviceStatus::OFFLINE);
@@ -71,7 +64,7 @@ public:
     [[nodiscard]] CdmpDeviceStatus GetStatus() const { return status_machine_->GetCurrentStatus(); }
     [[nodiscard]] CdmpHealthStatus GetHealthStatus() const { return health_status_; }
     [[nodiscard]] uint32_t GetCapabilityFlags() const { return capability_flags_; }
-    [[nodiscard]] system_clock::time_point GetLastHeartbeat() const { return last_heartbeat_; }
+    [[nodiscard]] uint64_t GetLastHeartbeatDeltaMs() const { return k_uptime_get() - last_heartbeat_; }
     [[nodiscard]] uint8_t GetUptimeCounter() const { return uptime_counter_; }
 
     // Setters

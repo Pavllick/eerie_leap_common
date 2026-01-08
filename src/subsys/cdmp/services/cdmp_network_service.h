@@ -17,7 +17,6 @@ using namespace eerie_leap::subsys::threading;
 
 class CdmpNetworkService : public CdmpCanbusServiceBase {
 private:
-    std::shared_ptr<ITimeService> time_service_;
     std::shared_ptr<WorkQueueThread> work_queue_thread_;
 
     std::optional<WorkQueueTask<CdmpNetworkService>> validation_task_;
@@ -68,7 +67,6 @@ public:
         std::shared_ptr<Canbus> canbus,
         std::shared_ptr<CdmpCanIdManager> can_id_manager,
         std::shared_ptr<CdmpDevice> device,
-        std::shared_ptr<ITimeService> time_service,
         std::shared_ptr<WorkQueueThread> work_queue_thread);
 
     ~CdmpNetworkService();

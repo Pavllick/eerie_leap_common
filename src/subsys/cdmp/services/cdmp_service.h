@@ -35,7 +35,6 @@ private:
     static constexpr int work_queue_priority_ = 5;
     std::shared_ptr<WorkQueueThread> work_queue_thread_;
 
-    std::shared_ptr<ITimeService> time_service_;
     std::shared_ptr<CdmpDevice> device_;
     std::shared_ptr<Canbus> canbus_;
     std::shared_ptr<CdmpCanIdManager> can_id_manager_;
@@ -52,7 +51,6 @@ private:
 
 public:
     CdmpService(
-        std::shared_ptr<ITimeService> time_service,
         std::shared_ptr<Canbus> canbus,
         CdmpDeviceType device_type,
         uint32_t uid,

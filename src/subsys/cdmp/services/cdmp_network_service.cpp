@@ -16,10 +16,8 @@ CdmpNetworkService::CdmpNetworkService(
     std::shared_ptr<Canbus> canbus,
     std::shared_ptr<CdmpCanIdManager> can_id_manager,
     std::shared_ptr<CdmpDevice> device,
-    std::shared_ptr<ITimeService> time_service,
     std::shared_ptr<WorkQueueThread> work_queue_thread_)
         : CdmpCanbusServiceBase(std::move(canbus), std::move(can_id_manager), std::move(device)),
-        time_service_(std::move(time_service)),
         work_queue_thread_(std::move(work_queue_thread_)) {}
 
 CdmpNetworkService::~CdmpNetworkService() {
@@ -378,7 +376,7 @@ void CdmpNetworkService::AddOrUpdateDevice(
 
         LOG_DBG("Updated device %d.", device_id);
     } else {
-        auto device = std::make_unique<CdmpDevice>(time_service_, uid, device_type, CdmpDeviceStatus::ONLINE);
+        auto device = std::make_unique<CdmpDevice>(uid, device_type, CdmpDeviceStatus::ONLINE);
         device->SetDeviceId(device_id);
         if(capability_flags != 0)
             device->SetCapabilityFlags(capability_flags);
@@ -462,11 +460,9 @@ bool CdmpNetworkService::IsDeviceOnline(uint8_t device_id) const {
 }
 
 void CdmpNetworkService::RemoveOfflineDevices() {
-    auto current_time = time_service_->GetCurrentTime();
-
     std::vector<uint8_t> offline_devices;
     for(const auto& [device_id, device] : network_devices_) {
-        if(current_time - device->GetLastHeartbeat() > std::chrono::milliseconds(CdmpConstants::HEARTBEAT_TIMEOUT_MS))
+        if(device->GetLastHeartbeatDeltaMs() > CdmpConstants::HEARTBEAT_TIMEOUT_MS)
             offline_devices.push_back(device_id);
     }
 

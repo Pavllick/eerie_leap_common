@@ -9,12 +9,10 @@ LOG_MODULE_REGISTER(cdmp_device, LOG_LEVEL_INF);
 namespace eerie_leap::subsys::cdmp::models {
 
 CdmpDevice::CdmpDevice(
-    std::shared_ptr<ITimeService> time_service,
     uint32_t uid,
     CdmpDeviceType device_type,
     CdmpDeviceStatus status)
-        : time_service_(std::move(time_service)),
-        uid_(uid),
+        : uid_(uid),
         device_type_(device_type),
         protocol_version_(GetCurrentProtocolVersion()),
         status_machine_(std::make_shared<CdmpStatusMachine>(status)) {
@@ -52,7 +50,7 @@ void CdmpDevice::Reset() {
 }
 
 void CdmpDevice::UpdateHeartbeat() {
-    last_heartbeat_ = time_service_->GetCurrentTime();
+    last_heartbeat_ = k_uptime_get();
 }
 
 void CdmpDevice::SetCapability(CdmpDeviceCapabilityFlags capability, bool enabled) {
