@@ -15,6 +15,7 @@
 #include "subsys/cdmp/models/cdmp_message.h"
 
 #include "i_cdmp_canbus_service.h"
+#include "cdmp_command_service.h"
 #include "cdmp_service.h"
 
 namespace eerie_leap::subsys::cdmp::services {
@@ -38,6 +39,7 @@ private:
     std::shared_ptr<CdmpDevice> device_;
     std::shared_ptr<Canbus> canbus_;
     std::shared_ptr<CdmpCanIdManager> can_id_manager_;
+    std::shared_ptr<CdmpCommandService> command_service_;
 
     std::vector<std::shared_ptr<ICdmpCanbusService>> canbus_services_;
 
@@ -66,6 +68,9 @@ public:
     // Configuration
     void SetAutoDiscovery(bool enabled);
     void SetDeviceType(CdmpDeviceType device_type);
+
+    std::shared_ptr<CdmpDevice> GetDevice() const { return device_; }
+    std::shared_ptr<CdmpCommandService> GetCommandService() const { return command_service_; }
 
     // Diagnostics
     void PrintDeviceStatus() const;

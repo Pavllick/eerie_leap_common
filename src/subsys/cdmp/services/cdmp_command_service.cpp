@@ -87,39 +87,40 @@ void CdmpCommandService::ProcessRequestFrame(std::span<const uint8_t> frame_data
             return;
         }
 
-        // if (device_ && device_->GetStatus() == CdmpDeviceStatus::ONLINE) {
-        //     // Handle normal commands
-        // } else if (command.command_code == CdmpCommandCode::STATUS_REQUEST) {
-        //     // Status request is allowed even when not fully online
-        // }
+        if(IsValidServiceCommandCode(command.command_code)) {
+            ProcessServiceRequestFrame(command);
+            return;
+        }
 
-        // LOG_INF("Received command 0x%02X for device %d, transaction %d",
-        //     static_cast<uint8_t>(command.command_code), command.target_device_id, command.transaction_id);
+        if(device_->GetStatus() != CdmpDeviceStatus::ONLINE)
+            throw std::runtime_error("Device is not online");
 
-        auto handler_it = command_handlers_.find(command.command_code);
-        if (handler_it != command_handlers_.end()) {
-            auto result = handler_it->second(command.transaction_id, command.data);
+        if(!IsValidUserCommandCode(command.command_code))
+            throw std::runtime_error("Invalid user command code");
 
+        auto result = NotifyCommandHandlers(command);
+        if(result.has_value()) {
             LOG_DBG("Processed command %d for transaction %d",
-                std::to_underlying(command.command_code), command.transaction_id);
+                command.command_code, command.transaction_id);
 
+            // Send response only if the command was sent to this device
             if(command.target_device_id != device_->GetDeviceId())
                 return;
 
-            CdmpCommandResponseMessage response{
+            CdmpCommandResponseMessage response {
                 .source_device_id = device_->GetDeviceId(),
                 .command_code = command.command_code,
                 .transaction_id = command.transaction_id,
-                .result_code = result.result_code,
-                .data = result.data
+                .result_code = result.value().result_code,
+                .data = result.value().data
             };
 
             SendCommandResponse(response);
         } else if(command.target_device_id == device_->GetDeviceId()) {
-            LOG_WRN("No handler registered for command %d", std::to_underlying(command.command_code));
+            LOG_WRN("No handler registered for command %d", command.command_code);
 
             // Send error response
-            CdmpCommandResponseMessage response{
+            CdmpCommandResponseMessage response {
                 .source_device_id = device_->GetDeviceId(),
                 .command_code = command.command_code,
                 .transaction_id = command.transaction_id,
@@ -131,6 +132,25 @@ void CdmpCommandService::ProcessRequestFrame(std::span<const uint8_t> frame_data
         }
     } catch (const std::exception& e) {
         LOG_ERR("Error processing command frame: %s", e.what());
+    }
+}
+
+void CdmpCommandService::ProcessServiceRequestFrame(const CdmpCommandRequestMessage& command) {
+    if(command.command_code == std::to_underlying(CdmpServiceCommandCode::STATUS_REQUEST)) {
+        // Status request is allowed even when device is not online
+        CdmpCommandResponseStatusMessage message(
+            device_->GetDeviceId(),
+            command.transaction_id,
+            CdmpResultCode::SUCCESS,
+            device_->GetStatus(),
+            device_->GetProtocolVersion(),
+            device_->GetHealthStatus()
+        );
+
+        NotifyCommandHandlers(command);
+        SendCommandResponse(message);
+    } else if(device_->GetStatus() == CdmpDeviceStatus::ONLINE) {
+        NotifyCommandHandlers(command);
     }
 }
 
@@ -147,9 +167,6 @@ void CdmpCommandService::ProcessResponseFrame(std::span<const uint8_t> frame_dat
 }
 
 void CdmpCommandService::SendCommandResponse(const CdmpCommandResponseMessage& response) {
-    if(!canbus_)
-        return;
-
     try {
         auto frame = response.ToCanFrame();
         uint32_t can_id = can_id_manager_->GetCommandResponseCanId();
@@ -161,23 +178,44 @@ void CdmpCommandService::SendCommandResponse(const CdmpCommandResponseMessage& r
     }
 }
 
-void CdmpCommandService::RegisterCommandHandler(CdmpCommandCode command_code, CommandHandler handler) {
-    command_handlers_[command_code] = std::move(handler);
-    LOG_DBG("Registered handler for command %d", std::to_underlying(command_code));
+std::optional<CdmpCommandResult> CdmpCommandService::NotifyCommandHandlers(const CdmpCommandRequestMessage& command) {
+    if(command_handlers_.contains(command.command_code))
+        return command_handlers_.at(command.command_code)(command.transaction_id, command.data);
+
+    return std::nullopt;
 }
 
-void CdmpCommandService::UnregisterCommandHandler(CdmpCommandCode command_code) {
+void CdmpCommandService::RegisterUserCommandHandler(uint8_t command_code, CommandHandler handler) {
+    if(!IsValidUserCommandCode(command_code))
+        throw std::runtime_error("Invalid user command code");
+
+    command_handlers_[command_code] = std::move(handler);
+    LOG_DBG("Registered handler for command %d", command_code);
+}
+
+void CdmpCommandService::RegisterServiceCommandHandler(CdmpServiceCommandCode command_code, CommandHandler handler) {
+    if(!IsValidServiceCommandCode(std::to_underlying(command_code)))
+        throw std::runtime_error("Invalid service command code");
+
+    command_handlers_[std::to_underlying(command_code)] = std::move(handler);
+    LOG_DBG("Registered handler for command %d", command_code);
+}
+
+void CdmpCommandService::UnregisterCommandHandler(uint8_t command_code) {
     command_handlers_.erase(command_code);
-    LOG_DBG("Unregistered handler for command %d", std::to_underlying(command_code));
+    LOG_DBG("Unregistered handler for command %d", command_code);
 }
 
 uint8_t CdmpCommandService::SendCommand(
     uint8_t target_device_id,
-    CdmpCommandCode command_code,
+    uint8_t command_code,
     const std::vector<uint8_t>& data,
     CdmpTransactionCallback callback) {
 
     try {
+        if(command_code == 0)
+            throw std::runtime_error("Command code 0 is not allowed");
+
         uint8_t transaction_id = transaction_service_->StartTransaction(
             command_code,
             CdmpTransactionService::DEFAULT_TRANSACTION_TIMEOUT,
@@ -195,13 +233,36 @@ uint8_t CdmpCommandService::SendCommand(
         canbus_->SendFrame(frame_id, frame_data);
 
         LOG_DBG("Sent command %d to device %d, transaction %d",
-            std::to_underlying(command_code), target_device_id, transaction_id);
+            command_code, target_device_id, transaction_id);
 
         return transaction_id;
     } catch (const std::exception& e) {
         LOG_ERR("Error sending command: %s", e.what());
         return 0;
     }
+}
+
+uint8_t CdmpCommandService::SendCommand(
+        uint8_t target_device_id,
+        CdmpServiceCommandCode command_code,
+        const std::vector<uint8_t>& data,
+        CdmpTransactionCallback callback) {
+
+    return SendCommand(target_device_id, std::to_underlying(command_code), data, callback);
+}
+
+bool CdmpCommandService::IsValidServiceCommandCode(uint8_t command_code) const {
+    auto service_command_code = static_cast<CdmpServiceCommandCode>(command_code);
+
+    return service_command_code == CdmpServiceCommandCode::STATUS_REQUEST
+        || service_command_code == CdmpServiceCommandCode::RESET_DEVICE
+        || service_command_code == CdmpServiceCommandCode::GET_CONFIG_CRC
+        || service_command_code == CdmpServiceCommandCode::GET_CONFIG;
+}
+
+bool CdmpCommandService::IsValidUserCommandCode(uint8_t command_code) const {
+    return command_code >= CdmpConstants::USER_COMMAND_CODE_MIN
+        && command_code <= CdmpConstants::USER_COMMAND_CODE_MAX;
 }
 
 } // namespace eerie_leap::subsys::cdmp::services

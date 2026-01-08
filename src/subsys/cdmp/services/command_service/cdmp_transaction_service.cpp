@@ -58,7 +58,7 @@ uint8_t CdmpTransactionService::GetNextTransactionId() {
 }
 
 uint8_t CdmpTransactionService::StartTransaction(
-    CdmpCommandCode expected_command,
+    uint8_t expected_command,
     int timeout,
     CdmpTransactionCallback callback) {
 
@@ -74,7 +74,7 @@ uint8_t CdmpTransactionService::StartTransaction(
 
     pending_transactions_[transaction_id] = std::move(transaction);
 
-    LOG_DBG("Started transaction %d for command %d", transaction_id, std::to_underlying(expected_command));
+    LOG_DBG("Started transaction %d for command %d", transaction_id, expected_command);
 
     return transaction_id;
 }

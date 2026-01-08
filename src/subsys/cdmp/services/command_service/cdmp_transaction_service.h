@@ -26,7 +26,7 @@ struct PendingTransaction {
     uint64_t start_time;
     uint64_t timeout;
     CdmpTransactionCallback callback;
-    CdmpCommandCode expected_command;
+    uint8_t expected_command;
 };
 
 class CdmpTransactionService {
@@ -59,7 +59,7 @@ public:
     void Stop();
 
     uint8_t StartTransaction(
-        CdmpCommandCode expected_command,
+        uint8_t expected_command,
         int timeout = DEFAULT_TRANSACTION_TIMEOUT,
         CdmpTransactionCallback callback = nullptr);
     void CompleteTransaction(const CdmpCommandResponseMessage& response);

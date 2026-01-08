@@ -7,16 +7,11 @@
 
 #include <zephyr/kernel.h>
 
+#include "subsys/cdmp/types/cdmp_types.h"
+
 namespace eerie_leap::subsys::cdmp::utilities {
 
-enum class CdmpDeviceStatus : uint8_t {
-    OFFLINE = 0x00,
-    INIT = 0x01,
-    CLAIMING = 0x02,
-    ONLINE = 0x03,
-    VERSION_MISMATCH = 0x04,
-    ERROR = 0x05
-};
+using namespace eerie_leap::subsys::cdmp::types;
 
 class CdmpStatusMachine {
 public:

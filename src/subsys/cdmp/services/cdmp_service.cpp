@@ -3,7 +3,6 @@
 #include "subsys/cdmp/models/cdmp_device.h"
 #include "cdmp_network_service.h"
 #include "cdmp_heartbeat_service.h"
-#include "cdmp_command_service.h"
 #include "cdmp_state_service.h"
 
 #include "cdmp_service.h"
@@ -40,13 +39,15 @@ CdmpService::CdmpService(
 
     auto network_service = std::make_shared<CdmpNetworkService>(
         canbus_, can_id_manager_, device_, time_service_, work_queue_thread_);
-
     canbus_services_.push_back(network_service);
-    canbus_services_.push_back(std::make_shared<CdmpHeartbeatService>(
+
+    canbus_services_.emplace_back(std::make_shared<CdmpHeartbeatService>(
         canbus_, can_id_manager_, device_, work_queue_thread_, network_service));
 
-    canbus_services_.emplace_back(std::make_shared<CdmpCommandService>(
-        canbus_, can_id_manager_, device_, work_queue_thread_));
+    command_service_ = std::make_shared<CdmpCommandService>(
+        canbus_, can_id_manager_, device_, work_queue_thread_);
+    canbus_services_.push_back(command_service_);
+
     canbus_services_.emplace_back(std::make_shared<CdmpStateService>(
         canbus_, can_id_manager_, device_));
     // TODO: Add IsoTp Service

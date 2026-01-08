@@ -5,6 +5,15 @@
 
 namespace eerie_leap::subsys::cdmp::types {
 
+enum class CdmpDeviceStatus : uint8_t {
+    OFFLINE = 0x00,
+    INIT = 0x01,
+    CLAIMING = 0x02,
+    ONLINE = 0x03,
+    VERSION_MISMATCH = 0x04,
+    ERROR = 0x05
+};
+
 enum class CdmpHealthStatus : uint8_t {
     OK = 0x00,
     WARNING = 0x01,
@@ -46,15 +55,12 @@ enum class CdmpIdClaimResult : uint8_t {
 };
 
 // Command codes for Command requests (Base + 2)
-enum class CdmpCommandCode : uint8_t {
-    READ_PARAMETER = 0x10,
-    WRITE_PARAMETER = 0x11,
-    EXECUTE_ACTION = 0x12,
-    RESET_DEVICE = 0x13,
-    STATUS_REQUEST = 0x14,
-    GET_CONFIG_CRC = 0x22,
-    GET_CONFIG = 0x23,
-    // Application-specific: 0x30-0xFF
+enum class CdmpServiceCommandCode : uint8_t {
+    STATUS_REQUEST = 0x10,
+    RESET_DEVICE = 0x11,
+    GET_CONFIG_CRC = 0x12,
+    GET_CONFIG = 0x13,
+    // Application-specific: 0x20-0xFF
 };
 
 // State types for State Change Notifications (Base + 4)
@@ -112,6 +118,9 @@ struct CdmpConstants {
 
     static constexpr int NETWORK_VALIDATION_INTERVAL_MS = 5000;
     static constexpr int STAGGERED_MESSAGE_TIME_OFFSET_MS = 5;
+
+    static constexpr int USER_COMMAND_CODE_MIN = 0x20;
+    static constexpr int USER_COMMAND_CODE_MAX = 0xFF;
 };
 
 struct CdmpTimeouts {

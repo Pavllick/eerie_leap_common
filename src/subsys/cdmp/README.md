@@ -295,41 +295,11 @@ Byte 3-7:  Command Parameters
 
 **Standard Command Codes:**
 
-**0x10: Read Parameter**
-
-```
-Byte 3:    Parameter ID (high byte)
-Byte 4:    Parameter ID (low byte)
-Byte 5-7:  Reserved
-```
-
-**0x11: Write Parameter**
-
-```
-Byte 3:    Parameter ID (high byte)
-Byte 4:    Parameter ID (low byte)
-Byte 5-7:  Parameter Value (up to 3 bytes, or use ISO-TP for larger)
-```
-
-**0x12: Execute Action**
-
-```
-Byte 3:    Action ID
-Byte 4-7:  Action Parameters
-```
-
-**0x13: Reset Device**
-
-```
-Byte 3:    Reset Type (0x00=Soft, 0x01=Hard, 0x02=Factory)
-Byte 4-7:  Reserved
-```
-
-**0x14: Status Request**
+**0x10: Status Request**
 
 ```
 Byte 0:    Target Device ID (typically 255 for broadcast)
-Byte 1:    0x14 (STATUS_REQUEST)
+Byte 1:    0x10 (STATUS_REQUEST)
 Byte 2:    Transaction ID
 Byte 3-7:  Reserved
 ```
@@ -343,11 +313,21 @@ Broadcast Behavior:
 - Devices in ONLINE status respond normally
 - Responses use standard Command Response format (Base + 3)
 
-**0x22: Get Config CRC32**
+**0x11: Reset Device**
 
 ```
 Byte 0:    Target Device ID
-Byte 1:    0x22 (GET_CONFIG_CRC)
+Byte 1:    0x11 (RESET_DEVICE)
+Byte 2:    Transaction ID
+Byte 3:    Reset Type (0x00=Soft, 0x01=Hard, 0x02=Factory)
+Byte 4-7:  Reserved
+```
+
+**0x12: Get Config CRC32**
+
+```
+Byte 0:    Target Device ID
+Byte 1:    0x12 (GET_CONFIG_CRC)
 Byte 2:    Transaction ID
 Byte 3:    Config Type (see Config Type Enumeration below)
 Byte 4-7:  Reserved
@@ -355,11 +335,11 @@ Byte 4-7:  Reserved
 
 Response contains CRC32 of requested configuration section.
 
-**0x23: Get Config**
+**0x13: Get Config**
 
 ```
 Byte 0:    Target Device ID
-Byte 1:    0x23 (GET_CONFIG)
+Byte 1:    0x13 (GET_CONFIG)
 Byte 2:    Transaction ID
 Byte 3:    Config Type (see Config Type Enumeration below)
 Byte 4-7:  Reserved
@@ -374,7 +354,7 @@ Initiates ISO-TP transfer of configuration data from target device.
 0x01-0xFF: Application-specific config types (registered dynamically)
 ```
 
-**0x30-0xFF: Application-Specific Commands**
+**0x20-0xFF: Application-Specific Commands**
 
 Applications define command codes in this range based on their registered capabilities and operational requirements. Examples might include:
 - Start/stop data streaming commands
@@ -410,30 +390,24 @@ Byte 4-7:  Response Data or Error Details
 0x01: Generic Error
 0x02: Invalid Parameter
 0x03: Unsupported Command
-0x04: Timeout
-0x05: CRC Error
-0x06: Buffer Overflow
-0x07: Device Busy
-0x08: Access Denied
-0x09: Not Ready
-0x0A: Invalid State
+0x04: Cancelled
+0x05: Timeout
+0x06: CRC Error
+0x07: Buffer Overflow
+0x08: Device Busy
+0x09: Access Denied
+0x0A: Not Ready
+0x0B: Invalid State
 0x10-0xFF: Application-specific errors
 ```
 
 **Response Data Examples:**
 
-**Read Parameter Response (0x10):**
-
-```
-Byte 3:    Result Code
-Byte 4-7:  Parameter Value (up to 4 bytes)
-```
-
-**Status Request Response (0x14):**
+**Status Request Response (0x10):**
 
 ```
 Byte 0:    Source Device ID
-Byte 1:    0x14 (STATUS_REQUEST)
+Byte 1:    0x10 (STATUS_REQUEST)
 Byte 2:    Transaction ID (echo from request)
 Byte 3:    Current Status (see Device Status Enumeration below)
 Byte 4:    Protocol Version (Major.Minor as uint8_t)
@@ -452,14 +426,14 @@ Device Status Enumeration (Byte 3):
 0x05: ERROR (fault detected)
 ```
 
-**Get Config CRC32 Response (0x22):**
+**Get Config CRC32 Response (0x12):**
 
 ```
 Byte 3:    Result Code
 Byte 4-7:  CRC32 value (32-bit, LSB first)
 ```
 
-**Get Config Response (0x23):**
+**Get Config Response (0x13):**
 
 ```
 Byte 3:    Result Code (0x00 = ISO-TP transfer will begin)
@@ -1103,7 +1077,7 @@ Applications are free to define any capability structure that fits their needs.
 
 ### 14.6 Capability Command Integration
 
-Applications can define capability-specific commands using the standard command framework (0x30-0xFF command codes). The protocol provides the transport mechanism; applications define command semantics for each registered capability.
+Applications can define capability-specific commands using the standard command framework (0x20-0xFF command codes). The protocol provides the transport mechanism; applications define command semantics for each registered capability.
 
 ---
 
@@ -1130,14 +1104,11 @@ Applications can define capability-specific commands using the standard command 
 
 | Command Code | Description |
 |--------------|-------------|
-| 0x10 | Read Parameter |
-| 0x11 | Write Parameter |
-| 0x12 | Execute Action |
-| 0x13 | Reset Device |
-| 0x14 | Status Request |
-| 0x22 | Get Config CRC32 |
-| 0x23 | Get Config |
-| 0x30-0xFF | Application-Specific Commands |
+| 0x10 | Status Request |
+| 0x11 | Reset Device |
+| 0x12 | Get Config CRC32 |
+| 0x13 | Get Config |
+| 0x20-0xFF | Application-Specific Commands |
 
 ### Special Response Codes
 
@@ -1166,9 +1137,9 @@ New Device:
   → Discovery Request (Base + 0): [0x03][UID_0]
   
 Existing Devices (staggered 5-10ms):
-  ← Discovery Response (Base + 0): [0x04][ID_1][UID_1]...[Type_1][
-  ← Discovery Response (Base + 0): [0x04][ID_2][UID_2]...[Type_2][
-  ← Discovery Response (Base + 0): [0x04][ID_5][UID_5]...[Type_5][
+  ← Discovery Response (Base + 0): [0x04][ID_1][UID_1]...[Type_1]
+  ← Discovery Response (Base + 0): [0x04][ID_2][UID_2]...[Type_2]
+  ← Discovery Response (Base + 0): [0x04][ID_5][UID_5]...[Type_5]
 
 New Device (selects ID=3, fills gap):
   → ID Claim (Base + 0): [0x01][0x03][UID_New]...[Type][Ver]
@@ -1253,11 +1224,11 @@ New Device (v2.0):
   Enters VERSION_MISMATCH status
 
 Later, diagnostic tool queries network:
-  → Status Request (Base + 2): [0xFF][0x14][0x42][0x00]...[0x00]
+  → Status Request (Base + 2): [0xFF][0x10][0x42][0x00]...[0x00]
 
 All devices respond:
-  ← t=0ms:   [0x01][0x14][0x42][0x04][0x10][0x00]... (Device 1: VERSION_MISMATCH, v1.0)
-  ← t=10ms:  [0x02][0x14][0x42][0x04][0x10][0x00]... (Device 2: VERSION_MISMATCH, v1.0)
-  ← t=20ms:  [0x03][0x14][0x42][0x04][0x10][0x00]... (Device 3: VERSION_MISMATCH, v1.0)
-  ← t=30ms:  [0x04][0x14][0x42][0x04][0x20][0x00]... (Device 4: VERSION_MISMATCH, v2.0)
+  ← t=0ms:   [0x01][0x10][0x42][0x04][0x10][0x00]... (Device 1: VERSION_MISMATCH, v1.0)
+  ← t=10ms:  [0x02][0x10][0x42][0x04][0x10][0x00]... (Device 2: VERSION_MISMATCH, v1.0)
+  ← t=20ms:  [0x03][0x10][0x42][0x04][0x10][0x00]... (Device 3: VERSION_MISMATCH, v1.0)
+  ← t=30ms:  [0x04][0x10][0x42][0x04][0x20][0x00]... (Device 4: VERSION_MISMATCH, v2.0)
 ```

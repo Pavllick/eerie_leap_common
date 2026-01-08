@@ -33,8 +33,7 @@ private:
     std::shared_ptr<WorkQueueThread> work_queue_thread_;
     std::unique_ptr<CdmpTransactionService> transaction_service_;
 
-    std::unordered_map<CdmpCommandCode, CommandHandler> command_handlers_;
-    // TODO: Implement transaction handling, add CdmpTransactionService
+    std::unordered_map<uint8_t, CommandHandler> command_handlers_;
 
     void RegisterCanHandlers();
     void UnregisterCanHandlers();
@@ -42,8 +41,13 @@ private:
     void OnDeviceStatusChanged(CdmpDeviceStatus old_status, CdmpDeviceStatus new_status) override;
 
     void ProcessRequestFrame(std::span<const uint8_t> frame_data);
+    void ProcessServiceRequestFrame(const CdmpCommandRequestMessage& command);
     void ProcessResponseFrame(std::span<const uint8_t> frame_data);
     void SendCommandResponse(const CdmpCommandResponseMessage& response);
+    std::optional<CdmpCommandResult> NotifyCommandHandlers(const CdmpCommandRequestMessage& command);
+
+    bool IsValidServiceCommandCode(uint8_t command_code) const;
+    bool IsValidUserCommandCode(uint8_t command_code) const;
 
 public:
     CdmpCommandService(
@@ -58,12 +62,18 @@ public:
     void Start() override;
     void Stop() override;
 
-    void RegisterCommandHandler(CdmpCommandCode command_code, CommandHandler handler);
-    void UnregisterCommandHandler(CdmpCommandCode command_code);
+    void RegisterUserCommandHandler(uint8_t command_code, CommandHandler handler);
+    void RegisterServiceCommandHandler(CdmpServiceCommandCode command_code, CommandHandler handler);
+    void UnregisterCommandHandler(uint8_t command_code);
 
     uint8_t SendCommand(
         uint8_t target_device_id,
-        CdmpCommandCode command_code,
+        uint8_t command_code,
+        const std::vector<uint8_t>& data = {},
+        CdmpTransactionCallback callback = nullptr);
+    uint8_t SendCommand(
+        uint8_t target_device_id,
+        CdmpServiceCommandCode command_code,
         const std::vector<uint8_t>& data = {},
         CdmpTransactionCallback callback = nullptr);
 };
