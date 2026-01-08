@@ -9,10 +9,18 @@ namespace eerie_leap::subsys::cdmp::services {
 CdmpCommandService::CdmpCommandService(
     std::shared_ptr<Canbus> canbus,
     std::shared_ptr<CdmpCanIdManager> can_id_manager,
-    std::shared_ptr<CdmpDevice> device)
-    : CdmpCanbusServiceBase(std::move(canbus), std::move(can_id_manager), std::move(device))
-    , canbus_handler_id_(-1)
-    , canbus_response_handler_id_(-1) {
+    std::shared_ptr<CdmpDevice> device,
+    std::shared_ptr<WorkQueueThread> work_queue_thread)
+        : CdmpCanbusServiceBase(std::move(canbus), std::move(can_id_manager), std::move(device))
+        , canbus_handler_id_(-1)
+        , canbus_response_handler_id_(-1)
+        , work_queue_thread_(std::move(work_queue_thread)) {
+
+    transaction_service_ = std::make_unique<CdmpTransactionService>(work_queue_thread_, device_);
+}
+
+void CdmpCommandService::Initialize() {
+    transaction_service_->Initialize();
 }
 
 CdmpCommandService::~CdmpCommandService() {
@@ -21,11 +29,13 @@ CdmpCommandService::~CdmpCommandService() {
 
 void CdmpCommandService::Start() {
     RegisterCanHandlers();
+
     LOG_INF("CDMP Command Service started");
 }
 
 void CdmpCommandService::Stop() {
     UnregisterCanHandlers();
+
     LOG_INF("CDMP Command Service stopped");
 }
 
@@ -55,6 +65,18 @@ void CdmpCommandService::UnregisterCanHandlers() {
     }
 }
 
+void CdmpCommandService::OnDeviceStatusChanged(CdmpDeviceStatus old_status, CdmpDeviceStatus new_status) {
+    switch(new_status) {
+        case CdmpDeviceStatus::ONLINE:
+            transaction_service_->Start();
+            break;
+
+        default:
+            transaction_service_->Stop();
+            break;
+    }
+}
+
 void CdmpCommandService::ProcessRequestFrame(std::span<const uint8_t> frame_data) {
     try {
         CdmpCommandRequestMessage command = CdmpCommandRequestMessage::FromCanFrame(frame_data);
@@ -74,24 +96,37 @@ void CdmpCommandService::ProcessRequestFrame(std::span<const uint8_t> frame_data
         // LOG_INF("Received command 0x%02X for device %d, transaction %d",
         //     static_cast<uint8_t>(command.command_code), command.target_device_id, command.transaction_id);
 
-
         auto handler_it = command_handlers_.find(command.command_code);
         if (handler_it != command_handlers_.end()) {
-            handler_it->second(command, command.transaction_id);
+            auto result = handler_it->second(command.transaction_id, command.data);
+
             LOG_DBG("Processed command %d for transaction %d",
-                   std::to_underlying(command.command_code), command.transaction_id);
-        } else {
+                std::to_underlying(command.command_code), command.transaction_id);
+
+            if(command.target_device_id != device_->GetDeviceId())
+                return;
+
+            CdmpCommandResponseMessage response{
+                .source_device_id = device_->GetDeviceId(),
+                .command_code = command.command_code,
+                .transaction_id = command.transaction_id,
+                .result_code = result.result_code,
+                .data = result.data
+            };
+
+            SendCommandResponse(response);
+        } else if(command.target_device_id == device_->GetDeviceId()) {
             LOG_WRN("No handler registered for command %d", std::to_underlying(command.command_code));
 
             // Send error response
             CdmpCommandResponseMessage response{
                 .source_device_id = device_->GetDeviceId(),
-                // .target_device_id = command.source_device_id,
                 .command_code = command.command_code,
                 .transaction_id = command.transaction_id,
                 .result_code = CdmpResultCode::UNSUPPORTED_COMMAND,
                 .data = {}
             };
+
             SendCommandResponse(response);
         }
     } catch (const std::exception& e) {
@@ -103,9 +138,9 @@ void CdmpCommandService::ProcessResponseFrame(std::span<const uint8_t> frame_dat
     try {
         CdmpCommandResponseMessage response = CdmpCommandResponseMessage::FromCanFrame(frame_data);
         LOG_DBG("Received command response for transaction %d, code %d",
-               response.transaction_id, std::to_underlying(response.result_code));
+            response.transaction_id, std::to_underlying(response.result_code));
 
-        // Response handling would be delegated to transaction service
+        transaction_service_->CompleteTransaction(response);
     } catch (const std::exception& e) {
         LOG_ERR("Error processing command response frame: %s", e.what());
     }
@@ -139,17 +174,16 @@ void CdmpCommandService::UnregisterCommandHandler(CdmpCommandCode command_code) 
 uint8_t CdmpCommandService::SendCommand(
     uint8_t target_device_id,
     CdmpCommandCode command_code,
-    const std::vector<uint8_t>& data) {
-
-    if(!canbus_)
-        return 0;
+    const std::vector<uint8_t>& data,
+    CdmpTransactionCallback callback) {
 
     try {
-        // Transaction ID generation would be delegated to transaction service
-        uint8_t transaction_id = 1; // Placeholder
+        uint8_t transaction_id = transaction_service_->StartTransaction(
+            command_code,
+            CdmpTransactionService::DEFAULT_TRANSACTION_TIMEOUT,
+            callback);
 
         CdmpCommandRequestMessage command{
-            // .source_device_id = device_->GetDeviceId(),
             .target_device_id = target_device_id,
             .command_code = command_code,
             .transaction_id = transaction_id,
@@ -168,18 +202,6 @@ uint8_t CdmpCommandService::SendCommand(
         LOG_ERR("Error sending command: %s", e.what());
         return 0;
     }
-}
-
-bool CdmpCommandService::SendCommandAndWaitForResponse(
-    uint8_t target_device_id,
-    CdmpCommandCode command_code,
-    const std::vector<uint8_t>& data,
-    CdmpCommandResponseMessage& response,
-    uint64_t timeout) {
-
-    // This would integrate with transaction service for proper wait/response handling
-    uint8_t transaction_id = SendCommand(target_device_id, command_code, data);
-    return transaction_id != 0;
 }
 
 } // namespace eerie_leap::subsys::cdmp::services

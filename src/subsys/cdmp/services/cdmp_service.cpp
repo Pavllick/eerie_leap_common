@@ -46,7 +46,7 @@ CdmpService::CdmpService(
         canbus_, can_id_manager_, device_, work_queue_thread_, network_service));
 
     canbus_services_.emplace_back(std::make_shared<CdmpCommandService>(
-        canbus_, can_id_manager_, device_));
+        canbus_, can_id_manager_, device_, work_queue_thread_));
     canbus_services_.emplace_back(std::make_shared<CdmpStateService>(
         canbus_, can_id_manager_, device_));
     // TODO: Add IsoTp Service

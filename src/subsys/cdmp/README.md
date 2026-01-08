@@ -146,9 +146,6 @@ The protocol does not predefine specific capabilities or their CAN ID assignment
 #### 3.2.1 Discovery-Based Startup Sequence
 
 1. **Power on**: Device initializes with no Device ID assigned
-1. **Startup backoff**: Wait random(0-500ms) to stagger startup
-   - Use true random source if available (ADC noise, etc.)
-   - Fallback: pseudo-random seeded from UID
 1. **Send Discovery Request**: Immediately broadcast on Base + 0
 1. **Wait for responses**: 200ms timeout for Discovery Responses
 1. **Retry if needed**: If no responses received, retry with backoff (100ms, 200ms, 500ms)
@@ -833,18 +830,7 @@ Length fields are 16-bit values indicating section data size in bytes (excluding
 - Advanced error recovery
 - Capability implementations (application-specific)
 
-### 9.3 Resource Requirements (Estimated)
-
-**RAM:**
-
-- Minimal: 256 bytes (buffers, status machine)
-- With ISO-TP: 1-4 KB (transfer buffers)
-
-**Flash:** 5-15 KB (protocol stack code)
-
-**CPU:** <5% at 1 Hz status updates, <20% during ISO-TP transfer
-
-### 9.4 Backward Compatibility
+### 9.3 Backward Compatibility
 
 - Simple devices ignore Base + 0 through Base + 99 completely
 - Protocol-aware devices process both normal CAN (0x100-0x6FF) and management protocol

@@ -2,6 +2,7 @@
 
 #include "subsys/cdmp/types/cdmp_types.h"
 #include "subsys/cdmp/utilities/cdmp_status_machine.h"
+#include "subsys/cdmp/utilities/cdmp_helpers.h"
 
 #include "cdmp_network_service.h"
 
@@ -172,7 +173,7 @@ void CdmpNetworkService::ProcessDiscoveryRequestFrame(std::span<const uint8_t> f
         }
 
         discovery_requesting_uids_.push_back(message.uid);
-        SendDiscoveryResponse();
+        work_queue_thread_->Run([this]() { SendDiscoveryResponse(); });
     } catch (const std::exception& e) {
         LOG_ERR("Error processing discovery request frame: %s", e.what());
     }
@@ -215,6 +216,10 @@ void CdmpNetworkService::SendDiscoveryResponse() {
     message.device_id = device_->GetDeviceId();
     message.uid = device_->GetUniqueIdentifier();
     message.device_type = device_->GetDeviceType();
+
+    auto response_delay = CdmpHelpers::CalculateStaggeredMessageTimeOffset(
+        GetAllDeviceIds(), device_->GetDeviceId());
+    k_msleep(response_delay);
 
     auto frame_data = message.ToCanFrame();
     uint32_t frame_id = can_id_manager_->GetDiscoveryResponseCanId();

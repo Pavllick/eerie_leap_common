@@ -17,13 +17,14 @@ enum class CdmpResultCode : uint8_t {
     GENERIC_ERROR = 0x01,
     INVALID_PARAMETER = 0x02,
     UNSUPPORTED_COMMAND = 0x03,
-    TIMEOUT = 0x04,
-    CRC_ERROR = 0x05,
-    BUFFER_OVERFLOW = 0x06,
-    DEVICE_BUSY = 0x07,
-    ACCESS_DENIED = 0x08,
-    NOT_READY = 0x09,
-    INVALID_STATE = 0x0A,
+    CANCELLED = 0x04,
+    TIMEOUT = 0x05,
+    CRC_ERROR = 0x06,
+    BUFFER_OVERFLOW = 0x07,
+    DEVICE_BUSY = 0x08,
+    ACCESS_DENIED = 0x09,
+    NOT_READY = 0x0A,
+    INVALID_STATE = 0x0B,
 
     BULK_TRANSFER_ACK = 0xF0
 };
@@ -110,6 +111,7 @@ struct CdmpConstants {
     static constexpr int HEARTBEAT_TIMEOUT_MS = HEARTBEAT_INTERVAL_MS * 3;
 
     static constexpr int NETWORK_VALIDATION_INTERVAL_MS = 5000;
+    static constexpr int STAGGERED_MESSAGE_TIME_OFFSET_MS = 5;
 };
 
 struct CdmpTimeouts {

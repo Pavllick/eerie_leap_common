@@ -13,7 +13,6 @@ using namespace eerie_leap::subsys::cdmp::types;
 
 // (Base + 2)
 struct CdmpCommandRequestMessage {
-    // uint8_t source_device_id;
     uint8_t target_device_id;
     CdmpCommandCode command_code;
     uint8_t transaction_id;
