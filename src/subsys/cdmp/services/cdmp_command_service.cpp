@@ -185,20 +185,26 @@ std::optional<CdmpCommandResult> CdmpCommandService::NotifyCommandHandlers(const
     return std::nullopt;
 }
 
+void CdmpCommandService::RegisterCommandHandler(uint8_t command_code, CommandHandler handler) {
+    if(command_code == 0)
+        throw std::runtime_error("Command code 0 is not allowed");
+
+    command_handlers_[command_code] = std::move(handler);
+    LOG_DBG("Registered handler for command %d", command_code);
+}
+
 void CdmpCommandService::RegisterUserCommandHandler(uint8_t command_code, CommandHandler handler) {
     if(!IsValidUserCommandCode(command_code))
         throw std::runtime_error("Invalid user command code");
 
-    command_handlers_[command_code] = std::move(handler);
-    LOG_DBG("Registered handler for command %d", command_code);
+    RegisterCommandHandler(command_code, handler);
 }
 
 void CdmpCommandService::RegisterServiceCommandHandler(CdmpServiceCommandCode command_code, CommandHandler handler) {
     if(!IsValidServiceCommandCode(std::to_underlying(command_code)))
         throw std::runtime_error("Invalid service command code");
 
-    command_handlers_[std::to_underlying(command_code)] = std::move(handler);
-    LOG_DBG("Registered handler for command %d", command_code);
+    RegisterCommandHandler(std::to_underlying(command_code), handler);
 }
 
 void CdmpCommandService::UnregisterCommandHandler(uint8_t command_code) {
@@ -209,7 +215,7 @@ void CdmpCommandService::UnregisterCommandHandler(uint8_t command_code) {
 uint8_t CdmpCommandService::SendCommand(
     uint8_t target_device_id,
     uint8_t command_code,
-    const std::vector<uint8_t>& data,
+    std::span<const uint8_t> data,
     CdmpTransactionCallback callback) {
 
     try {
@@ -225,7 +231,7 @@ uint8_t CdmpCommandService::SendCommand(
             .target_device_id = target_device_id,
             .command_code = command_code,
             .transaction_id = transaction_id,
-            .data = data
+            .data = std::vector<uint8_t>(data.begin(), data.end())
         };
 
         auto frame_data = command.ToCanFrame();
@@ -245,7 +251,7 @@ uint8_t CdmpCommandService::SendCommand(
 uint8_t CdmpCommandService::SendCommand(
         uint8_t target_device_id,
         CdmpServiceCommandCode command_code,
-        const std::vector<uint8_t>& data,
+        std::span<const uint8_t> data,
         CdmpTransactionCallback callback) {
 
     return SendCommand(target_device_id, std::to_underlying(command_code), data, callback);

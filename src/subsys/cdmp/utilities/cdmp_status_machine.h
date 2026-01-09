@@ -7,11 +7,12 @@
 
 #include <zephyr/kernel.h>
 
-#include "subsys/cdmp/types/cdmp_types.h"
+#include "subsys/cdmp/utilities/constants.h"
+#include "subsys/cdmp/utilities/enums.h"
 
 namespace eerie_leap::subsys::cdmp::utilities {
 
-using namespace eerie_leap::subsys::cdmp::types;
+using namespace eerie_leap::subsys::cdmp::utilities;
 
 class CdmpStatusMachine {
 public:

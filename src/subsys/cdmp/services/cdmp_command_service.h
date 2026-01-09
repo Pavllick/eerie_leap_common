@@ -23,9 +23,10 @@ struct CdmpCommandResult {
     std::vector<uint8_t> data;
 };
 
-using CommandHandler = std::function<CdmpCommandResult(uint8_t transaction_id, std::span<const uint8_t> data)>;
-
 class CdmpCommandService : public CdmpCanbusServiceBase {
+public:
+    using CommandHandler = std::function<CdmpCommandResult(uint8_t transaction_id, std::span<const uint8_t> data)>;
+
 private:
     int canbus_handler_id_;
     int canbus_response_handler_id_;
@@ -62,6 +63,7 @@ public:
     void Start() override;
     void Stop() override;
 
+    void RegisterCommandHandler(uint8_t command_code, CommandHandler handler);
     void RegisterUserCommandHandler(uint8_t command_code, CommandHandler handler);
     void RegisterServiceCommandHandler(CdmpServiceCommandCode command_code, CommandHandler handler);
     void UnregisterCommandHandler(uint8_t command_code);
@@ -69,12 +71,12 @@ public:
     uint8_t SendCommand(
         uint8_t target_device_id,
         uint8_t command_code,
-        const std::vector<uint8_t>& data = {},
+        std::span<const uint8_t> data = {},
         CdmpTransactionCallback callback = nullptr);
     uint8_t SendCommand(
         uint8_t target_device_id,
         CdmpServiceCommandCode command_code,
-        const std::vector<uint8_t>& data = {},
+        std::span<const uint8_t> data = {},
         CdmpTransactionCallback callback = nullptr);
 };
 

@@ -77,6 +77,11 @@ config EERIE_LEAP_DOMAIN_CANBUS
     help
       Add EerieLeap CANBus Domain.
 
+config EERIE_LEAP_DOMAIN_CANBUS_COM
+    bool "EerieLeap CANBus COM Domain"
+    help
+      Add EerieLeap CANBus COM Domain.
+
 module = EERIE_LEAP_COMMON
 module-str = eerie_leap_common
 source "subsys/logging/Kconfig.template.log_config"

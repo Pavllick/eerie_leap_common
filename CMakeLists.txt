@@ -188,6 +188,13 @@ if(CONFIG_EERIE_LEAP_COMMON)
         )
     endif()
 
+    if(CONFIG_EERIE_LEAP_DOMAIN_CANBUS_COM)
+        list(APPEND SRC
+            "${SRC_DIR}/domain/canbus_com_domain/*.c"
+            "${SRC_DIR}/domain/canbus_com_domain/*.cpp"
+        )
+    endif()
+
     # ========================
 
     file(GLOB_RECURSE SRC ${SRC})

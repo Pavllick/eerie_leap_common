@@ -4,12 +4,10 @@
 #include <chrono>
 #include <zephyr/kernel.h>
 
-#include "../types/cdmp_types.h"
-#include "../utilities/cdmp_status_machine.h"
+#include "subsys/cdmp/utilities/cdmp_status_machine.h"
 
 namespace eerie_leap::subsys::cdmp::models {
 
-using namespace eerie_leap::subsys::cdmp::types;
 using namespace eerie_leap::subsys::cdmp::utilities;
 
 enum class CdmpDeviceType : uint8_t {

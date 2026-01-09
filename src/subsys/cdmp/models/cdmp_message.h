@@ -6,8 +6,6 @@
 #include <stdexcept>
 #include <utility>
 
-#include "subsys/cdmp/types/cdmp_types.h"
-
 #include "subsys/cdmp/models/messages/cdmp_command_request_message.h"
 #include "subsys/cdmp/models/messages/cdmp_command_response_message.h"
 #include "subsys/cdmp/models/messages/cdmp_discovery_request_message.h"
@@ -17,8 +15,6 @@
 #include "subsys/cdmp/models/messages/cdmp_id_claim_response_message.h"
 
 namespace eerie_leap::subsys::cdmp::models {
-
-using namespace eerie_leap::subsys::cdmp::types;
 
 // TODO: Rethink state change notification and response messages
 // probably should be removed

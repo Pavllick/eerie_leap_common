@@ -1,6 +1,5 @@
 #include <zephyr/logging/log.h>
 
-#include "subsys/cdmp/types/cdmp_types.h"
 #include "subsys/cdmp/utilities/cdmp_status_machine.h"
 #include "subsys/cdmp/utilities/cdmp_helpers.h"
 
@@ -9,8 +8,6 @@
 LOG_MODULE_REGISTER(cdmp_network_service, LOG_LEVEL_INF);
 
 namespace eerie_leap::subsys::cdmp::services {
-
-using namespace eerie_leap::subsys::cdmp::types;
 
 CdmpNetworkService::CdmpNetworkService(
     std::shared_ptr<Canbus> canbus,

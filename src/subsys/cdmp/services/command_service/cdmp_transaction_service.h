@@ -5,7 +5,6 @@
 
 #include "subsys/threading/work_queue_thread.h"
 
-#include "subsys/cdmp/types/cdmp_types.h"
 #include "subsys/cdmp/models/cdmp_device.h"
 #include "subsys/cdmp/models/cdmp_message.h"
 
@@ -17,7 +16,6 @@ namespace eerie_leap::subsys::cdmp::services::command_service {
 
 using namespace eerie_leap::subsys::threading;
 using namespace eerie_leap::subsys::cdmp::models;
-using namespace eerie_leap::subsys::cdmp::types;
 
 using CdmpTransactionCallback = std::function<void(uint8_t transaction_id, const CdmpResultCode, std::span<const uint8_t>)>;
 
