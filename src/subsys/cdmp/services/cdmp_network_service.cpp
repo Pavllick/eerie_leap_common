@@ -13,9 +13,9 @@ CdmpNetworkService::CdmpNetworkService(
     std::shared_ptr<Canbus> canbus,
     std::shared_ptr<CdmpCanIdManager> can_id_manager,
     std::shared_ptr<CdmpDevice> device,
-    std::shared_ptr<WorkQueueThread> work_queue_thread_)
+    std::shared_ptr<WorkQueueThread> work_queue_thread)
         : CdmpCanbusServiceBase(std::move(canbus), std::move(can_id_manager), std::move(device)),
-        work_queue_thread_(std::move(work_queue_thread_)) {}
+        work_queue_thread_(std::move(work_queue_thread)) {}
 
 CdmpNetworkService::~CdmpNetworkService() {
     Stop();
@@ -54,7 +54,8 @@ void CdmpNetworkService::StartValidationTask() {
 void CdmpNetworkService::RegisterCanHandlers() {
     canbus_handler_id_ = canbus_->RegisterFrameReceivedHandler(
         can_id_manager_->GetManagementCanId(),
-        [this](const CanFrame& frame) { ProcessFrame(frame.id, frame.data); });
+        [this](const CanFrame& frame) {
+            work_queue_thread_->Run([this, frame]() { ProcessFrame(frame.data); }); });
 
     if(canbus_handler_id_ < 0) {
         throw std::runtime_error("Failed to register CAN frame handler for frame ID: "
@@ -82,7 +83,7 @@ void CdmpNetworkService::OnDeviceStatusChanged(CdmpDeviceStatus old_status, Cdmp
             break;
 
         case CdmpDeviceStatus::ONLINE:
-            LOG_INF("Device is now online");
+            LOG_INF("Device %d is now online", device_->GetDeviceId());
             StartValidationTask();
             break;
 
@@ -101,7 +102,7 @@ void CdmpNetworkService::OnDeviceStatusChanged(CdmpDeviceStatus old_status, Cdmp
     }
 }
 
-void CdmpNetworkService::ProcessFrame(uint32_t frame_id, std::span<const uint8_t> frame_data) {
+void CdmpNetworkService::ProcessFrame(std::span<const uint8_t> frame_data) {
     CdmpManagementMessageType message_type = static_cast<CdmpManagementMessageType>(frame_data[0]);
 
     switch(message_type) {
@@ -212,9 +213,7 @@ void CdmpNetworkService::SendDiscoveryResponse() {
     message.uid = device_->GetUniqueIdentifier();
     message.device_type = device_->GetDeviceType();
 
-    auto response_delay = CdmpHelpers::CalculateStaggeredMessageTimeOffset(
-        GetAllDeviceIds(), device_->GetDeviceId());
-    k_msleep(response_delay);
+    k_msleep(device_->GetStaggeredMessageDelay());
 
     auto frame_data = message.ToCanFrame();
     uint32_t frame_id = can_id_manager_->GetDiscoveryResponseCanId();
@@ -256,7 +255,7 @@ void CdmpNetworkService::SendIdClaim() {
 
         if(id_claim_result_.has_value() && id_claim_result_.value() == CdmpIdClaimResult::ACCEPT) {
             device_->SetDeviceId(claiming_device_id_);
-            UpdateLowestIdOnNetwork();
+            UpdateNetworkDevices();
             device_->GoOnline();
             break;
         }
@@ -289,7 +288,7 @@ void CdmpNetworkService::ProcessIdClaimRequestFrame(std::span<const uint8_t> fra
 
         bool send_response = false;
 
-        if(device_->GetDeviceId() == lowest_id_on_network_
+        if(device_->IsLowestIdOnNetwork()
            && !device_->IsProtocolCompatible(id_claim_message.protocol_version)) {
 
             message.result = CdmpIdClaimResult::VERSION_INCOMPATIBLE;
@@ -297,7 +296,7 @@ void CdmpNetworkService::ProcessIdClaimRequestFrame(std::span<const uint8_t> fra
         } else if(device_->GetDeviceId() == id_claim_message.claiming_device_id) {
             message.result = CdmpIdClaimResult::REJECT;
             send_response = true;
-        } else if(device_->GetDeviceId() == lowest_id_on_network_) {
+        } else if(device_->IsLowestIdOnNetwork()) {
             message.result = CdmpIdClaimResult::ACCEPT;
             send_response = true;
 
@@ -379,9 +378,7 @@ void CdmpNetworkService::AddOrUpdateDevice(
             device->SetCapabilityFlags(capability_flags);
 
         network_devices_.emplace(device_id, std::move(device));
-
-        if(device_id < lowest_id_on_network_)
-            lowest_id_on_network_ = device_id;
+        UpdateNetworkDevices();
 
         LOG_INF("Added new device: ID=%d, Type=%d, UID=0x%08X", device_id, std::to_underlying(device_type), uid);
     }
@@ -443,7 +440,7 @@ WorkQueueTaskResult CdmpNetworkService::ProcessPeriodicValidation(CdmpNetworkSer
     }
 
     instance->RemoveOfflineDevices();
-    instance->UpdateLowestIdOnNetwork();
+    instance->UpdateNetworkDevices();
 
     return {
         .reschedule = instance->is_validation_task_running_,
@@ -467,6 +464,11 @@ void CdmpNetworkService::RemoveOfflineDevices() {
         RemoveDevice(device_id);
 }
 
+void CdmpNetworkService::UpdateNetworkDevices() {
+    UpdateLowestIdOnNetwork();
+    UpdateStaggeredMessageDelay();
+}
+
 void CdmpNetworkService::UpdateLowestIdOnNetwork() {
     uint8_t lowest_id_on_network = device_->GetDeviceId();
     for(const auto& [id, _] : network_devices_) {
@@ -474,7 +476,23 @@ void CdmpNetworkService::UpdateLowestIdOnNetwork() {
             lowest_id_on_network = std::min(lowest_id_on_network, id);
     }
 
-    lowest_id_on_network_ = lowest_id_on_network;
+    device_->SetIsLowestIdOnNetwork(device_->GetDeviceId() == lowest_id_on_network);
+    for(const auto& [id, device] : network_devices_)
+        device->SetIsLowestIdOnNetwork(id == lowest_id_on_network);
+}
+
+void CdmpNetworkService::UpdateStaggeredMessageDelay() {
+    uint8_t lowest_id_on_network = device_->GetDeviceId();
+    for(const auto& [id, _] : network_devices_) {
+        if(id < lowest_id_on_network)
+            lowest_id_on_network = std::min(lowest_id_on_network, id);
+    }
+
+    device_->SetStaggeredMessageDelay(CdmpHelpers::CalculateStaggeredMessageTimeOffset(
+        GetAllDeviceIds(), device_->GetDeviceId()));
+    for(const auto& [id, device] : network_devices_)
+        device->SetStaggeredMessageDelay(CdmpHelpers::CalculateStaggeredMessageTimeOffset(
+            GetAllDeviceIds(), id));
 }
 
 uint8_t CdmpNetworkService::GetLowestAvailableId(uint8_t after) const {

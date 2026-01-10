@@ -53,7 +53,8 @@ void CdmpHeartbeatService::StartHeartbeatTask() {
 void CdmpHeartbeatService::RegisterCanHandlers() {
     canbus_handler_id_ = canbus_->RegisterFrameReceivedHandler(
         can_id_manager_->GetHeartbeatCanId(),
-        [this](const CanFrame& frame) { ProcessFrame(frame.id, frame.data); });
+        [this](const CanFrame& frame) {
+            work_queue_thread_->Run([this, frame]() { ProcessFrame(frame.data); }); });
 
     if(canbus_handler_id_ < 0) {
         throw std::runtime_error("Failed to register CAN frame handler for frame ID: "
@@ -88,7 +89,7 @@ void CdmpHeartbeatService::OnDeviceStatusChanged(CdmpDeviceStatus old_status, Cd
     }
 }
 
-void CdmpHeartbeatService::ProcessFrame(uint32_t frame_id, std::span<const uint8_t> frame_data) {
+void CdmpHeartbeatService::ProcessFrame(std::span<const uint8_t> frame_data) {
     try {
         CdmpHeartbeatMessage heartbeat = CdmpHeartbeatMessage::FromCanFrame(frame_data);
         network_service_->UpdateDeviceFromHeartbeat(heartbeat);
@@ -112,6 +113,8 @@ void CdmpHeartbeatService::SendHeartbeat() {
 
         auto frame_data = heartbeat.ToCanFrame();
         uint32_t frame_id = can_id_manager_->GetHeartbeatCanId();
+
+        k_msleep(device_->GetStaggeredMessageDelay());
         canbus_->SendFrame(frame_id, frame_data);
 
         heartbeat_sequence_number_++;

@@ -44,11 +44,13 @@ void CdmpCommandService::RegisterCanHandlers() {
 
     canbus_handler_id_ = canbus_->RegisterFrameReceivedHandler(
         can_id_manager_->GetCommandRequestCanId(),
-        [this](const CanFrame& frame) { ProcessRequestFrame(frame.data); });
+        [this](const CanFrame& frame) {
+            work_queue_thread_->Run([this, frame]() { ProcessRequestFrame(frame.data); }); });
 
     canbus_response_handler_id_ = canbus_->RegisterFrameReceivedHandler(
         can_id_manager_->GetCommandResponseCanId(),
-        [this](const CanFrame& frame) { ProcessResponseFrame(frame.data); });
+        [this](const CanFrame& frame) {
+            work_queue_thread_->Run([this, frame]() { ProcessResponseFrame(frame.data); }); });
 }
 
 void CdmpCommandService::UnregisterCanHandlers() {
@@ -81,6 +83,8 @@ void CdmpCommandService::ProcessRequestFrame(std::span<const uint8_t> frame_data
     try {
         CdmpCommandRequestMessage command = CdmpCommandRequestMessage::FromCanFrame(frame_data);
 
+        LOG_HEXDUMP_INF(frame_data.data(), frame_data.size(), "Command received");
+
         if(command.target_device_id != device_->GetDeviceId()
             && command.target_device_id != CdmpDevice::DEVICE_ID_BROADCAST) {
 
@@ -98,14 +102,11 @@ void CdmpCommandService::ProcessRequestFrame(std::span<const uint8_t> frame_data
         if(!IsValidUserCommandCode(command.command_code))
             throw std::runtime_error("Invalid user command code");
 
-        auto result = NotifyCommandHandlers(command);
+        auto result = NotifyCommandHandler(command);
+
         if(result.has_value()) {
             LOG_DBG("Processed command %d for transaction %d",
                 command.command_code, command.transaction_id);
-
-            // Send response only if the command was sent to this device
-            if(command.target_device_id != device_->GetDeviceId())
-                return;
 
             CdmpCommandResponseMessage response {
                 .source_device_id = device_->GetDeviceId(),
@@ -115,7 +116,7 @@ void CdmpCommandService::ProcessRequestFrame(std::span<const uint8_t> frame_data
                 .data = result.value().data
             };
 
-            SendCommandResponse(response);
+            SendCommandResponse(command.target_device_id, response);
         } else if(command.target_device_id == device_->GetDeviceId()) {
             LOG_WRN("No handler registered for command %d", command.command_code);
 
@@ -128,7 +129,7 @@ void CdmpCommandService::ProcessRequestFrame(std::span<const uint8_t> frame_data
                 .data = {}
             };
 
-            SendCommandResponse(response);
+            SendCommandResponse(command.target_device_id, response);
         }
     } catch (const std::exception& e) {
         LOG_ERR("Error processing command frame: %s", e.what());
@@ -147,10 +148,10 @@ void CdmpCommandService::ProcessServiceRequestFrame(const CdmpCommandRequestMess
             device_->GetHealthStatus()
         );
 
-        NotifyCommandHandlers(command);
-        SendCommandResponse(message);
+        NotifyCommandHandler(command);
+        SendCommandResponse(command.target_device_id, message);
     } else if(device_->GetStatus() == CdmpDeviceStatus::ONLINE) {
-        NotifyCommandHandlers(command);
+        NotifyCommandHandler(command);
     }
 }
 
@@ -166,10 +167,14 @@ void CdmpCommandService::ProcessResponseFrame(std::span<const uint8_t> frame_dat
     }
 }
 
-void CdmpCommandService::SendCommandResponse(const CdmpCommandResponseMessage& response) {
+void CdmpCommandService::SendCommandResponse(uint8_t target_device_id, const CdmpCommandResponseMessage& response) {
     try {
         auto frame = response.ToCanFrame();
         uint32_t can_id = can_id_manager_->GetCommandResponseCanId();
+
+        if(target_device_id != device_->GetDeviceId())
+            k_msleep(device_->GetStaggeredMessageDelay());
+
         canbus_->SendFrame(can_id, frame);
 
         LOG_DBG("Sent command response for transaction %d", response.transaction_id);
@@ -178,7 +183,7 @@ void CdmpCommandService::SendCommandResponse(const CdmpCommandResponseMessage& r
     }
 }
 
-std::optional<CdmpCommandResult> CdmpCommandService::NotifyCommandHandlers(const CdmpCommandRequestMessage& command) {
+std::optional<CdmpCommandResult> CdmpCommandService::NotifyCommandHandler(const CdmpCommandRequestMessage& command) {
     if(command_handlers_.contains(command.command_code))
         return command_handlers_.at(command.command_code)(command.transaction_id, command.data);
 

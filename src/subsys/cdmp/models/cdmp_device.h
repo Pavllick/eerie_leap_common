@@ -33,6 +33,8 @@ private:
     uint32_t capability_flags_ = 0;
     uint64_t last_heartbeat_;
     uint8_t uptime_counter_ = 0;
+    bool is_lowest_id_on_network_ = false;
+    uint32_t staggered_message_delay_ = 0;
 
     std::shared_ptr<CdmpStatusMachine> status_machine_;
 
@@ -64,6 +66,9 @@ public:
     [[nodiscard]] uint32_t GetCapabilityFlags() const { return capability_flags_; }
     [[nodiscard]] uint64_t GetLastHeartbeatDeltaMs() const { return k_uptime_get() - last_heartbeat_; }
     [[nodiscard]] uint8_t GetUptimeCounter() const { return uptime_counter_; }
+    [[nodiscard]] bool IsLowestIdOnNetwork() const { return is_lowest_id_on_network_; }
+    [[nodiscard]] uint32_t GetStaggeredMessageDelay() const { return staggered_message_delay_; }
+
 
     // Setters
     void SetDeviceId(uint8_t device_id) { device_id_ = device_id; }
@@ -71,6 +76,12 @@ public:
     void SetCapabilityFlags(uint32_t flags) { capability_flags_ = flags; }
     void UpdateHeartbeat();
     void IncrementUptime() { uptime_counter_++; }
+    void SetIsLowestIdOnNetwork(bool is_lowest_id_on_network) {
+        is_lowest_id_on_network_ = is_lowest_id_on_network;
+    }
+    void SetStaggeredMessageDelay(uint32_t staggered_message_delay) {
+        staggered_message_delay_ = staggered_message_delay;
+    }
 
     // Utility methods
     bool IsOnline() const { return status_machine_->GetCurrentStatus() == CdmpDeviceStatus::ONLINE; }

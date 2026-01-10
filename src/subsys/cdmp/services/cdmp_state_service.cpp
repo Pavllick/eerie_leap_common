@@ -34,11 +34,17 @@ void CdmpStateService::RegisterCanHandlers() {
 
     state_change_handler_id_ = canbus_->RegisterFrameReceivedHandler(
         can_id_manager_->GetStateChangeRequestCanId(),
-        [this](const CanFrame& frame) { ProcessRequestFrame(frame); });
+        [this](const CanFrame& frame) {
+            ProcessRequestFrame(frame);
+            // work_queue_thread_->Run([this, frame]() { ProcessRequestFrame(frame.data); });
+        });
 
     state_change_response_handler_id_ = canbus_->RegisterFrameReceivedHandler(
         can_id_manager_->GetStateChangeResponseCanId(),
-        [this](const CanFrame& frame) { ProcessResponseFrame(frame); });
+        [this](const CanFrame& frame) {
+            ProcessResponseFrame(frame);
+            // work_queue_thread_->Run([this, frame]() { ProcessResponseFrame(frame.data); });
+        });
 }
 
 void CdmpStateService::UnregisterCanHandlers() {

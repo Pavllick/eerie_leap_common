@@ -44,8 +44,8 @@ private:
     void ProcessRequestFrame(std::span<const uint8_t> frame_data);
     void ProcessServiceRequestFrame(const CdmpCommandRequestMessage& command);
     void ProcessResponseFrame(std::span<const uint8_t> frame_data);
-    void SendCommandResponse(const CdmpCommandResponseMessage& response);
-    std::optional<CdmpCommandResult> NotifyCommandHandlers(const CdmpCommandRequestMessage& command);
+    void SendCommandResponse(uint8_t target_device_id, const CdmpCommandResponseMessage& response);
+    std::optional<CdmpCommandResult> NotifyCommandHandler(const CdmpCommandRequestMessage& command);
 
     bool IsValidServiceCommandCode(uint8_t command_code) const;
     bool IsValidUserCommandCode(uint8_t command_code) const;

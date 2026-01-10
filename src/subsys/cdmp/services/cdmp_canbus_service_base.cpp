@@ -26,6 +26,4 @@ CdmpCanbusServiceBase::~CdmpCanbusServiceBase() {
 
 void CdmpCanbusServiceBase::OnDeviceStatusChanged(CdmpDeviceStatus old_status, CdmpDeviceStatus new_status) {}
 
-void CdmpCanbusServiceBase::ProcessFrame(uint32_t frame_id, std::span<const uint8_t> frame_data) {}
-
 } // namespace eerie_leap::subsys::cdmp::services

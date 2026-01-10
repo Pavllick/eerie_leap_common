@@ -26,7 +26,6 @@ private:
     int canbus_handler_id_ = -1;
 
     std::unordered_map<uint8_t, std::unique_ptr<CdmpDevice>> network_devices_;
-    uint8_t lowest_id_on_network_ = 0;
 
     // Discovery and tracking
     bool auto_discovery_enabled_ = true;
@@ -59,7 +58,9 @@ private:
     void UpdateDeviceFromDiscovery(const CdmpDiscoveryResponseMessage& discovery);
 
     void RemoveOfflineDevices();
+    void UpdateNetworkDevices();
     void UpdateLowestIdOnNetwork();
+    void UpdateStaggeredMessageDelay();
     uint8_t GetLowestAvailableId(uint8_t after = 0) const;
 
 public:
@@ -75,7 +76,7 @@ public:
     void Start() override;
     void Stop() override;
 
-    void ProcessFrame(uint32_t frame_id, std::span<const uint8_t> frame_data) override;
+    void ProcessFrame(std::span<const uint8_t> frame_data);
     void StartInitialization();
 
     // Network device management
