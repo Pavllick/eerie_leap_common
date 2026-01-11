@@ -1,0 +1,12 @@
+config EERIE_LEAP_CONFIGURATION
+    bool "EerieLeap Configuration"
+    help
+      Add EerieLeap Configuration.
+
+menu "EerieLeap Configuration config"
+    depends on EERIE_LEAP_CONFIGURATION
+
+    config EERIE_LEAP_SD_CARD_USER_CONFIG_DIR
+        string "User config directory"
+        default "configuration"
+endmenu

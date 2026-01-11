@@ -53,15 +53,24 @@ if(CONFIG_EERIE_LEAP_COMMON)
 
     # ======== Configuration ========
 
-    list(APPEND SRC
-        "${SRC_DIR}/configuration/services/*.c"
-        "${SRC_DIR}/configuration/services/*.cpp"
-        "${SRC_DIR}/configuration/cbor/cbor_serializer.cpp"
-        "${SRC_DIR}/configuration/json/boost_json_config.cpp"
-        "${SRC_DIR}/configuration/json/json_serializer.cpp"
-    )
+    if(CONFIG_EERIE_LEAP_CONFIGURATION)
+        list(APPEND SRC
+            "${SRC_DIR}/configuration/services/*.c"
+            "${SRC_DIR}/configuration/services/*.cpp"
+            "${SRC_DIR}/configuration/cbor/cbor_serializer.cpp"
+            "${SRC_DIR}/configuration/json/boost_json_config.cpp"
+            "${SRC_DIR}/configuration/json/json_serializer.cpp"
+        )
+    endif()
 
     # ======== Subsystems ========
+
+    if(CONFIG_EERIE_LEAP_ADC)
+        list(APPEND SRC
+            "${SRC_DIR}/subsys/adc/*.c"
+            "${SRC_DIR}/subsys/adc/*.cpp"
+        )
+    endif()
 
     if(CONFIG_EERIE_LEAP_CANBUS)
         list(APPEND SRC
@@ -192,6 +201,27 @@ if(CONFIG_EERIE_LEAP_COMMON)
         list(APPEND SRC
             "${SRC_DIR}/domain/canbus_com_domain/*.c"
             "${SRC_DIR}/domain/canbus_com_domain/*.cpp"
+        )
+    endif()
+
+    if(CONFIG_EERIE_LEAP_DOMAIN_SCRIPT)
+        list(APPEND SRC
+            "${SRC_DIR}/domain/script_domain/*.c"
+            "${SRC_DIR}/domain/script_domain/*.cpp"
+        )
+    endif()
+
+    if(CONFIG_EERIE_LEAP_DOMAIN_SENSOR)
+        list(APPEND SRC
+            "${SRC_DIR}/domain/sensor_domain/*.c"
+            "${SRC_DIR}/domain/sensor_domain/*.cpp"
+        )
+
+        list(APPEND SRC
+            "${SRC_DIR}/configuration/cbor/traits/adc_config_trait.cpp"
+            "${SRC_DIR}/configuration/cbor/cbor_adc_config/*.cpp"
+            "${SRC_DIR}/configuration/cbor/traits/sensors_config_trait.cpp"
+            "${SRC_DIR}/configuration/cbor/cbor_sensors_config/*.cpp"
         )
     endif()
 

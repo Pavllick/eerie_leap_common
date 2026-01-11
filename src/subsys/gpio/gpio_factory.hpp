@@ -2,26 +2,31 @@
 
 #include <memory>
 
-#include "subsys/device_tree/dt_gpio.h"
+#include "zephyr/drivers/gpio.h"
+
 #include "gpio.h"
 #include "gpio_emulator.h"
 #include "gpio_simulator.h"
 
 namespace eerie_leap::subsys::gpio {
 
-using namespace eerie_leap::subsys::device_tree;
-
 class GpioFactory {
+private:
+    using DtGpioProvider = std::function<std::optional<std::vector<gpio_dt_spec>>&()>;
+    DtGpioProvider dt_gpio_provider_;
+
 public:
-    static std::shared_ptr<IGpio> Create() {
+    GpioFactory(DtGpioProvider dt_gpio_provider) : dt_gpio_provider_(dt_gpio_provider) {}
+
+    std::shared_ptr<IGpio> Create() {
 #ifdef CONFIG_GPIO_EMUL
-        if(DtGpio::Get().has_value())
-            return std::make_shared<GpioEmulator>(DtGpio::Get().value());
+        if(dt_gpio_provider_ != nullptr && dt_gpio_provider_().has_value())
+            return std::make_shared<GpioEmulator>(dt_gpio_provider_().value());
 #endif
 
 #ifdef CONFIG_GPIO
-        if(DtGpio::Get().has_value())
-            return std::make_shared<Gpio>(DtGpio::Get().value());
+        if(dt_gpio_provider_ != nullptr && dt_gpio_provider_().has_value())
+            return std::make_shared<Gpio>(dt_gpio_provider_().value());
 #endif
 
         return std::make_shared<GpioSimulator>();

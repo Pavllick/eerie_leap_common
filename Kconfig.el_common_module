@@ -5,12 +5,6 @@ config EERIE_LEAP_COMMON
     help
       Add EerieLeap common code.
 
-
-config EERIE_LEAP_CANBUS
-    bool "EerieLeap CANBus"
-    help
-      Add EerieLeap CANBus.
-
 config EERIE_LEAP_CFB
     bool "EerieLeap CFB"
     help
@@ -20,11 +14,6 @@ config EERIE_LEAP_DBC
     bool "EerieLeap DBC"
     help
       Add EerieLeap DBC.
-
-config EERIE_LEAP_FS
-    bool "EerieLeap FS"
-    help
-      Add EerieLeap FS.
 
 config EERIE_LEAP_GPIO
     bool "EerieLeap GPIO"
@@ -47,11 +36,6 @@ config EERIE_LEAP_MDF
     help
       Add EerieLeap MDF.
 
-config EERIE_LEAP_MODBUS
-    bool "EerieLeap Modbus"
-    help
-      Add EerieLeap Modbus.
-
 config EERIE_LEAP_RANDOM
     bool "EerieLeap Random"
     help
@@ -68,15 +52,33 @@ config EERIE_LEAP_TIME
       Add EerieLeap Time.
 
 config EERIE_LEAP_DOMAIN_CANBUS
+    depends on EERIE_LEAP_CONFIGURATION
     bool "EerieLeap CANBus Domain"
     help
       Add EerieLeap CANBus Domain.
+
+config EERIE_LEAP_DOMAIN_SCRIPT
+    bool "EerieLeap Script Domain"
+    help
+      Add EerieLeap Script Domain.
+
+config EERIE_LEAP_DOMAIN_SENSOR
+    depends on EERIE_LEAP_CONFIGURATION
+    bool "EerieLeap Sensor Domain"
+    help
+      Add EerieLeap Sensor Domain.
 
 module = EERIE_LEAP_COMMON
 module-str = eerie_leap_common
 
 source "subsys/logging/Kconfig.template.log_config"
+
+rsource "src/configuration/Kconfig.configuration"
+rsource "src/subsys/adc/Kconfig.adc"
+rsource "src/subsys/canbus/Kconfig.canbus"
 rsource "src/subsys/cdmp/Kconfig.cdmp"
+rsource "src/subsys/fs/Kconfig.fs"
+rsource "src/subsys/modbus/Kconfig.modbus"
 
 rsource "src/domain/canbus_com_domain/Kconfig.canbus_com_domain"
 endmenu
