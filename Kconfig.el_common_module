@@ -11,11 +11,6 @@ config EERIE_LEAP_CANBUS
     help
       Add EerieLeap CANBus.
 
-config EERIE_LEAP_CDMP
-    bool "EerieLeap CDMP"
-    help
-      Add EerieLeap CDMP.
-
 config EERIE_LEAP_CFB
     bool "EerieLeap CFB"
     help
@@ -84,5 +79,8 @@ config EERIE_LEAP_DOMAIN_CANBUS_COM
 
 module = EERIE_LEAP_COMMON
 module-str = eerie_leap_common
+
 source "subsys/logging/Kconfig.template.log_config"
+rsource "src/subsys/cdmp/Kconfig.cdmp"
+
 endmenu

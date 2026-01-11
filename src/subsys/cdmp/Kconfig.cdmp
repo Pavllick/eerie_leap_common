@@ -1,0 +1,28 @@
+config EERIE_LEAP_CDMP
+    bool "EerieLeap CDMP"
+    help
+      Add EerieLeap CDMP.
+
+config EERIE_LEAP_CDMP_SERVICE_THREAD_PRIORITY
+    int "EerieLeap CDMP Service Thread Priority"
+    default 5
+    help
+      Add EerieLeap CDMP Service Thread Priority.
+
+config EERIE_LEAP_CDMP_SERVICE_THREAD_STACK_SIZE
+    int "EerieLeap CDMP Service Thread Stack Size"
+    default 4096
+    help
+      Add EerieLeap CDMP Service Thread Stack Size.
+
+config EERIE_LEAP_CDMP_WORK_QUEUE_PRIORITY
+    int "EerieLeap CDMP Work Queue Priority"
+    default 5
+    help
+      Add EerieLeap CDMP Work Queue Priority.
+
+config EERIE_LEAP_CDMP_WORK_QUEUE_STACK_SIZE
+    int "EerieLeap CDMP Work Queue Stack Size"
+    default 4096
+    help
+      Add EerieLeap CDMP Work Queue Stack Size.

@@ -27,12 +27,7 @@ using namespace eerie_leap::subsys::cdmp::utilities;
 
 class CdmpService : public IThread {
 private:
-    static constexpr int k_stack_size_ = 4096;
-    static constexpr int k_priority_ = 5;
     std::unique_ptr<Thread> thread_;
-
-    static constexpr int work_queue_stack_size_ = 4096;
-    static constexpr int work_queue_priority_ = 5;
     std::shared_ptr<WorkQueueThread> work_queue_thread_;
 
     std::shared_ptr<CdmpDevice> device_;

@@ -20,17 +20,20 @@ CdmpService::CdmpService(
         base_can_id_(base_can_id) {
 
     if(canbus_ == nullptr)
-        throw std::runtime_error("Canbus interface is null");
+        throw std::runtime_error("Canbus interface is undefined");
 
     can_id_manager_ = std::make_shared<CdmpCanIdManager>(base_can_id_);
     device_ = std::make_shared<CdmpDevice>(uid, device_type);
 
     thread_ = std::make_unique<Thread>(
-        "cdmp_service_thread", this, k_stack_size_, k_priority_);
+        "cdmp_service_thread",
+        this,
+        CONFIG_EERIE_LEAP_CDMP_SERVICE_THREAD_STACK_SIZE,
+        CONFIG_EERIE_LEAP_CDMP_SERVICE_THREAD_PRIORITY);
     work_queue_thread_ = std::make_shared<WorkQueueThread>(
         "cdmp_work_queue",
-        work_queue_stack_size_,
-        work_queue_priority_);
+        CONFIG_EERIE_LEAP_CDMP_WORK_QUEUE_STACK_SIZE,
+        CONFIG_EERIE_LEAP_CDMP_WORK_QUEUE_PRIORITY);
 
     auto network_service = std::make_shared<CdmpNetworkService>(
         canbus_, can_id_manager_, device_, work_queue_thread_);
