@@ -197,6 +197,8 @@ static bool decode_CborCanbusConfig(
         return false;
     }
 
+    result->com_bus_channel_present = zcbor_uint32_decode(state, &result->com_bus_channel);
+
     if (!zcbor_uint32_decode(state, &result->json_config_checksum)) {
         return false;
     }

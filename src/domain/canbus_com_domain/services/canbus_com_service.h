@@ -48,6 +48,9 @@ public:
 
     template<SpanConstructible TRequest>
     void SetCommandHandler(CanbusComCommandCode command_code, CommandDataRequestCallback<TRequest> callback) {
+        if(!cdmp_service_)
+            return;
+
         cdmp_service_->GetCommandService()->RegisterCommandHandler(
             std::to_underlying(command_code),
             [callback](uint8_t _, std::span<const uint8_t> data) {
@@ -77,6 +80,9 @@ public:
     //     });
     template<SpanConstructible TRequest>
     void SetCommandHandler(CanbusComCommandCode command_code, CommandDataRequestWithResponseCallback<TRequest> callback) {
+        if(!cdmp_service_)
+            return;
+
         cdmp_service_->GetCommandService()->RegisterCommandHandler(
             std::to_underlying(command_code),
             [callback](uint8_t _, std::span<const uint8_t> data) {
@@ -108,6 +114,9 @@ public:
         ICanbusComCommand& command,
         CommandDataResponseCallback<TResponse> callback,
         uint8_t device_id = CdmpConstants::COMMAND_BROADCAST_ID) {
+
+        if(!cdmp_service_)
+            return;
 
         SendCommand(command, [callback](uint8_t _, const CdmpResultCode result_code, std::span<const uint8_t> data) {
             callback(

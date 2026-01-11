@@ -46,6 +46,12 @@ static size_t cbor_get_size_CborCanbusConfig(const CborCanbusConfig& config) {
         }
     }
 
+    builder.AddOptional(
+        config.com_bus_channel_present,
+        config.com_bus_channel,
+        [](const auto& value) {
+            return CborSizeCalc::SizeOfUint(value);
+        });
     builder.AddUint(config.json_config_checksum);
 
     return builder.Build();

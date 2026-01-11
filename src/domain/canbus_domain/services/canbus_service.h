@@ -32,8 +32,9 @@ public:
         std::function<const device*(uint8_t)> dt_canbus_provider,
         std::shared_ptr<CanbusConfigurationManager> canbus_configuration_manager);
 
-    std::shared_ptr<Canbus> GetCanbus(uint8_t bus_channel) const;
-    const CanChannelConfiguration* GetChannelConfiguration(uint8_t bus_channel) const;
+    [[nodiscard]] std::shared_ptr<Canbus> GetCanbus(uint8_t bus_channel) const;
+    [[nodiscard]] std::shared_ptr<Canbus> GetComCanbus() const;
+    [[nodiscard]] const CanChannelConfiguration* GetChannelConfiguration(uint8_t bus_channel) const;
 };
 
 } // namespace eerie_leap::domain::canbus_domain::services

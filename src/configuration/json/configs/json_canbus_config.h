@@ -51,6 +51,7 @@ struct JsonCanChannelConfig {
 
 struct JsonCanbusConfig {
     boost::container::pmr::vector<JsonCanChannelConfig> channel_configs;
+    int com_bus_channel;
 
     JsonCanbusConfig(json::storage_ptr sp = Mrm::GetBoostExtPmr())
         : channel_configs(sp.get()) {}
@@ -170,6 +171,7 @@ static void tag_invoke(json::value_from_tag, json::value& jv, JsonCanbusConfig c
     for(const auto& channel_config : config.channel_configs)
         channel_configs_array.push_back(json::value_from(channel_config, Mrm::GetBoostExtPmr()));
     obj[NAMEOF_MEMBER(&JsonCanbusConfig::channel_configs).c_str()] = std::move(channel_configs_array);
+    obj[NAMEOF_MEMBER(&JsonCanbusConfig::com_bus_channel).c_str()] = config.com_bus_channel;
 
     jv = std::move(obj);
 }
@@ -182,6 +184,14 @@ static JsonCanbusConfig tag_invoke(json::value_to_tag<JsonCanbusConfig>, json::v
     result.channel_configs.reserve(channel_configs_array.size());
     for(const auto& elem : channel_configs_array)
         result.channel_configs.push_back(json::value_to<JsonCanChannelConfig>(elem));
+
+    auto com_bus_channel = obj.at(NAMEOF_MEMBER(&JsonCanbusConfig::com_bus_channel).c_str()).as_int64();
+    if(com_bus_channel > 255)
+        throw std::runtime_error("Invalid COM bus channel");
+    else if(com_bus_channel < 0)
+        result.com_bus_channel = -1;
+    else
+        result.com_bus_channel = static_cast<uint8_t>(com_bus_channel);
 
     return result;
 }

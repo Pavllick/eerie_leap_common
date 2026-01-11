@@ -52,6 +52,22 @@ const CanChannelConfiguration* CanbusService::GetChannelConfiguration(uint8_t bu
     return &canbus_configuration->channel_configurations.at(bus_channel);
 }
 
+std::shared_ptr<Canbus> CanbusService::GetComCanbus() const {
+    if(!canbus_configuration_manager_->Get()->com_bus_channel.has_value()) {
+        LOG_WRN("COM CANBus not configured.");
+        return nullptr;
+    }
+
+    auto com_canbus = GetCanbus(canbus_configuration_manager_->Get()->com_bus_channel.value());
+
+    if(!com_canbus) {
+        LOG_WRN("COM CANBus channel %d not found.",
+            canbus_configuration_manager_->Get()->com_bus_channel.value());
+    }
+
+    return com_canbus;
+}
+
 void CanbusService::BitrateUpdated(uint8_t bus_channel, uint32_t bitrate) {
     auto canbus_configuration = canbus_configuration_manager_->Get();
     bool is_bus_channel_valid = canbus_configuration->channel_configurations.contains(bus_channel);

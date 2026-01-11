@@ -47,6 +47,11 @@ pmr_unique_ptr<JsonCanbusConfig> CanbusConfigurationJsonParser::Serialize(const 
         config->channel_configs.push_back(std::move(channel_config));
     }
 
+    if(configuration.com_bus_channel.has_value())
+        config->com_bus_channel = configuration.com_bus_channel.value();
+    else
+        config->com_bus_channel = -1;
+
     return config;
 }
 
@@ -116,6 +121,9 @@ pmr_unique_ptr<CanbusConfiguration> CanbusConfigurationJsonParser::Deserialize(s
         if(!res)
             throw std::runtime_error("Duplicate CAN bus channel " + std::to_string(canbus_config.bus_channel));
     }
+
+    if(config.com_bus_channel >= 0)
+        configuration->com_bus_channel = config.com_bus_channel;
 
     CanbusConfigurationValidator::Validate(*configuration, sd_fs_service_.get());
 
