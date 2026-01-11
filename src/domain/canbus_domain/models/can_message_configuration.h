@@ -3,6 +3,7 @@
 #include <memory_resource>
 #include <cstdint>
 #include <string>
+#include <optional>
 
 #include "subsys/lua_script/lua_script.h"
 #include "can_signal_configuration.h"
@@ -15,7 +16,7 @@ struct CanMessageConfiguration {
     using allocator_type = std::pmr::polymorphic_allocator<>;
 
     uint32_t frame_id = 0;
-    uint32_t send_interval_ms = 0;
+    std::optional<int> send_interval_ms = std::nullopt;
     std::pmr::string script_path;
 
     std::pmr::string name;

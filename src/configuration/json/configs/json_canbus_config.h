@@ -25,7 +25,7 @@ struct JsonCanSignalConfig {
 
 struct JsonCanMessageConfig {
     uint32_t frame_id;
-    uint32_t send_interval_ms;
+    int send_interval_ms;
     json::string script_path;
 
     json::string name;
@@ -110,7 +110,7 @@ static JsonCanMessageConfig tag_invoke(json::value_to_tag<JsonCanMessageConfig>,
     JsonCanMessageConfig result;
 
     result.frame_id = static_cast<uint32_t>(obj.at(NAMEOF_MEMBER(&JsonCanMessageConfig::frame_id).c_str()).as_int64());
-    result.send_interval_ms = static_cast<uint32_t>(obj.at(NAMEOF_MEMBER(&JsonCanMessageConfig::send_interval_ms).c_str()).as_int64());
+    result.send_interval_ms = static_cast<int>(obj.at(NAMEOF_MEMBER(&JsonCanMessageConfig::send_interval_ms).c_str()).as_int64());
     result.script_path = obj.at(NAMEOF_MEMBER(&JsonCanMessageConfig::script_path).c_str()).as_string();
     result.name = obj.at(NAMEOF_MEMBER(&JsonCanMessageConfig::name).c_str()).as_string();
     result.message_size = static_cast<uint32_t>(obj.at(NAMEOF_MEMBER(&JsonCanMessageConfig::message_size).c_str()).as_int64());

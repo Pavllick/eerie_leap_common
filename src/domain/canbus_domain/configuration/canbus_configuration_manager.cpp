@@ -92,9 +92,7 @@ bool CanbusConfigurationManager::Update(const CanbusConfiguration& configuration
         return false;
     }
 
-    Get(true);
-
-    return true;
+    return Get(true) != nullptr;
 }
 
 std::shared_ptr<CanbusConfiguration> CanbusConfigurationManager::Get(bool force_load) {

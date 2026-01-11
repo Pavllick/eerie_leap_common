@@ -26,7 +26,7 @@ static size_t cbor_get_size_CborCanbusConfig(const CborCanbusConfig& config) {
             builder.AddIndefiniteArrayStart();
 
             builder.AddUint(message_configuration.frame_id)
-                .AddUint(message_configuration.send_interval_ms)
+                .AddInt(message_configuration.send_interval_ms)
                 .AddTstr(message_configuration.script_path)
                 .AddTstr(message_configuration.name)
                 .AddUint(message_configuration.message_size);
@@ -46,12 +46,7 @@ static size_t cbor_get_size_CborCanbusConfig(const CborCanbusConfig& config) {
         }
     }
 
-    builder.AddOptional(
-        config.com_bus_channel_present,
-        config.com_bus_channel,
-        [](const auto& value) {
-            return CborSizeCalc::SizeOfUint(value);
-        });
+    builder.AddInt(config.com_bus_channel);
     builder.AddUint(config.json_config_checksum);
 
     return builder.Build();

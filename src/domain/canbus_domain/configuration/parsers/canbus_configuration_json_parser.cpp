@@ -1,3 +1,5 @@
+#include <optional>
+
 #include "canbus_configuration_validator.h"
 #include "canbus_configuration_parser_helpers.hpp"
 #include "canbus_configuration_json_parser.h"
@@ -24,7 +26,9 @@ pmr_unique_ptr<JsonCanbusConfig> CanbusConfigurationJsonParser::Serialize(const 
         for(const auto& message_configuration : channel_configuration.message_configurations) {
             JsonCanMessageConfig message_config;
             message_config.frame_id = message_configuration->frame_id;
-            message_config.send_interval_ms = message_configuration->send_interval_ms;
+            message_config.send_interval_ms = message_configuration->send_interval_ms.has_value()
+                ? message_configuration->send_interval_ms.value()
+                : -1;
             message_config.script_path = json::string(message_configuration->script_path);
             message_config.name = json::string(message_configuration->name);
             message_config.message_size = message_configuration->message_size;
@@ -75,7 +79,9 @@ pmr_unique_ptr<CanbusConfiguration> CanbusConfigurationJsonParser::Deserialize(s
             auto message_configuration = make_shared_pmr<CanMessageConfiguration>(mr);
 
             message_configuration->frame_id = message_config.frame_id;
-            message_configuration->send_interval_ms = message_config.send_interval_ms;
+            message_configuration->send_interval_ms = message_config.send_interval_ms > 0
+                ? std::optional<int>(message_config.send_interval_ms)
+                : std::nullopt;
             message_configuration->script_path = std::string(message_config.script_path);
             message_configuration->name = std::string(message_config.name);
             message_configuration->message_size = message_config.message_size;

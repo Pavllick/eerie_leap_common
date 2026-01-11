@@ -7,7 +7,6 @@ namespace eerie_leap::subsys::dbc {
 
 Dbc::Dbc(std::allocator_arg_t, allocator_type alloc)
    : messages_(alloc),
-   is_loaded_(false),
    allocator_(alloc) {}
 
 dbcppp::Network* Dbc::GetOrCreateDbcNetwork() {
@@ -25,9 +24,7 @@ bool Dbc::LoadDbcFile(std::streambuf& dbc_content) {
    std::istream stream(&dbc_content);
    net_ = dbcppp::Network::LoadDBCFromIs(allocator_.resource(), stream);
 
-   is_loaded_ = net_ != nullptr;
-
-   return is_loaded_;
+   return net_ != nullptr;
 }
 
 DbcMessage* Dbc::AddMessage(uint32_t frame_id, std::pmr::string name, uint8_t message_size) {

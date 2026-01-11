@@ -21,7 +21,6 @@ public:
 private:
    std::shared_ptr<dbcppp::Network> net_;
    std::pmr::unordered_map<uint32_t, DbcMessage> messages_;
-   bool is_loaded_;
    bool is_indexed_all_dbc_messages_ = false;
 
    allocator_type allocator_;
@@ -46,10 +45,8 @@ public:
    Dbc(Dbc&& other, allocator_type alloc)
       : net_(std::move(other.net_)),
       messages_(std::move(other.messages_)),
-      is_loaded_(other.is_loaded_),
       allocator_(alloc) {}
 
-   bool IsLoaded() const { return is_loaded_; }
    bool LoadDbcFile(std::streambuf& dbc_content);
 
    DbcMessage* AddMessage(uint32_t frame_id, std::pmr::string name, uint8_t message_size);

@@ -51,7 +51,7 @@ static bool decode_CborCanMessageConfig(
         return false;
     }
 
-    if (!zcbor_uint32_decode(state, &result->send_interval_ms)) {
+    if (!zcbor_int32_decode(state, &result->send_interval_ms)) {
         zcbor_list_end_decode(state);
         return false;
     }
@@ -197,7 +197,9 @@ static bool decode_CborCanbusConfig(
         return false;
     }
 
-    result->com_bus_channel_present = zcbor_uint32_decode(state, &result->com_bus_channel);
+    if (!zcbor_int32_decode(state, &result->com_bus_channel)) {
+        return false;
+    }
 
     if (!zcbor_uint32_decode(state, &result->json_config_checksum)) {
         return false;

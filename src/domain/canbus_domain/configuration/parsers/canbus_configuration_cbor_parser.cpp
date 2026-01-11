@@ -1,4 +1,5 @@
 #include <utility>
+#include <optional>
 
 #include "utilities/cbor/cbor_helpers.hpp"
 
@@ -32,7 +33,9 @@ pmr_unique_ptr<CborCanbusConfig> CanbusConfigurationCborParser::Serialize(const 
             CborCanMessageConfig message_config(std::allocator_arg, Mrm::GetExtPmr());
 
             message_config.frame_id = message_configuration->frame_id;
-            message_config.send_interval_ms = message_configuration->send_interval_ms;
+            message_config.send_interval_ms = message_configuration->send_interval_ms.has_value()
+                ? message_configuration->send_interval_ms.value()
+                : -1;
             message_config.script_path = CborHelpers::ToZcborString(message_configuration->script_path);
             message_config.name = CborHelpers::ToZcborString(message_configuration->name);
             message_config.message_size = message_configuration->message_size;
@@ -54,9 +57,9 @@ pmr_unique_ptr<CborCanbusConfig> CanbusConfigurationCborParser::Serialize(const 
         config->CborCanChannelConfig_m.push_back(std::move(channel_config));
     }
 
-    config->com_bus_channel_present = configuration.com_bus_channel.has_value();
-    if(configuration.com_bus_channel.has_value())
-        config->com_bus_channel = configuration.com_bus_channel.value();
+    config->com_bus_channel = configuration.com_bus_channel.has_value()
+        ? configuration.com_bus_channel.value()
+        : -1;
 
     return config;
 }
@@ -81,7 +84,9 @@ pmr_unique_ptr<CanbusConfiguration> CanbusConfigurationCborParser::Deserialize(s
             auto message_configuration = make_shared_pmr<CanMessageConfiguration>(mr);
 
             message_configuration->frame_id = message_config.frame_id;
-            message_configuration->send_interval_ms = message_config.send_interval_ms;
+            message_configuration->send_interval_ms = message_config.send_interval_ms > 0
+                ? std::optional<int>(message_config.send_interval_ms)
+                : std::nullopt;
             message_configuration->script_path = CborHelpers::ToPmrString(mr, message_config.script_path);
             message_configuration->name = CborHelpers::ToPmrString(mr, message_config.name);
             message_configuration->message_size = message_config.message_size;
@@ -128,8 +133,9 @@ pmr_unique_ptr<CanbusConfiguration> CanbusConfigurationCborParser::Deserialize(s
             throw std::runtime_error("Duplicate CAN bus channel " + std::to_string(channel_configuration.bus_channel));
     }
 
-    if(config.com_bus_channel_present)
-        configuration->com_bus_channel = config.com_bus_channel;
+    configuration->com_bus_channel = config.com_bus_channel >= 0
+        ? std::optional<uint8_t>(config.com_bus_channel)
+        : std::nullopt;
 
     CanbusConfigurationValidator::Validate(*configuration, sd_fs_service_.get());
 

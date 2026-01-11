@@ -45,7 +45,7 @@ static bool encode_CborCanMessageConfig(
 	size_t CborCanSignalConfig_m_count = input->CborCanSignalConfig_m.size();
 
 	bool res = (((zcbor_list_start_encode(state, 6) && ((((zcbor_uint32_encode(state, (&(*input).frame_id))))
-	&& ((zcbor_uint32_encode(state, (&(*input).send_interval_ms))))
+	&& ((zcbor_int32_encode(state, (&(*input).send_interval_ms))))
 	&& ((zcbor_tstr_encode(state, (&(*input).script_path))))
 	&& ((zcbor_tstr_encode(state, (&(*input).name))))
 	&& ((zcbor_uint32_encode(state, (&(*input).message_size))))
@@ -82,7 +82,7 @@ static bool encode_CborCanbusConfig(
 	size_t CborCanChannelConfig_m_count = input->CborCanChannelConfig_m.size();
 
 	bool res = (((zcbor_list_start_encode(state, 3) && ((((zcbor_list_start_encode(state, CborCanChannelConfig_m_count) && ((zcbor_multi_encode_minmax(0, CborCanChannelConfig_m_count, &CborCanChannelConfig_m_count, (zcbor_encoder_t *)encode_CborCanChannelConfig, state, input->CborCanChannelConfig_m.data(), sizeof(struct CborCanChannelConfig))) || (zcbor_list_map_end_force_encode(state), false)) && zcbor_list_end_encode(state, CborCanChannelConfig_m_count)))
-	&& (!(*input).com_bus_channel_present || zcbor_uint32_encode(state, (&(*input).com_bus_channel)))
+	&& (zcbor_int32_encode(state, (&(*input).com_bus_channel)))
 	&& ((zcbor_uint32_encode(state, (&(*input).json_config_checksum))))) || (zcbor_list_map_end_force_encode(state), false)) && zcbor_list_end_encode(state, 3))));
 
 	log_result(state, res, __func__);
