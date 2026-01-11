@@ -13,7 +13,7 @@ CanbusComService::CanbusComService(std::shared_ptr<CanbusService> canbus_service
 
     cdmp_service_ = std::make_shared<CdmpService>(
         canbus_service_->GetCanbus(0),  // TODO: Make configurable
-        CdmpDeviceType::LOGGER, // TODO: Make configurable
+        static_cast<CdmpDeviceType>(CONFIG_EERIE_LEAP_DOMAIN_CANBUS_COM_DEVICE_TYPE),
         Rng::Get32(true));
 }
 

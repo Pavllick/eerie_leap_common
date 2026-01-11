@@ -11,9 +11,9 @@ namespace eerie_leap::subsys::cdmp::models {
 using namespace eerie_leap::subsys::cdmp::utilities;
 
 enum class CdmpDeviceType : uint8_t {
-    NONE = 0x00,
-    LOGGER = 0x01,
-    DISPLAY = 0x02
+    NONE = 0,
+    LOGGER = 1,
+    DISPLAY = 2
 };
 
 enum class CdmpDeviceCapabilityFlags : uint32_t {
