@@ -18,12 +18,16 @@ public:
 
     virtual ~CanbusComLoggingCommand() = default;
 
-    CanbusComCommandCode GetCommandCode() const override {
+    [[nodiscard]] bool IsStart() const {
+        return is_start_;
+    }
+
+    [[nodiscard]] CanbusComCommandCode GetCommandCode() const override {
         return CanbusComCommandCode::LOGGING;
     }
 
-    std::vector<uint8_t> GetData() const override {
-        return { is_start_ ? 0x01 : 0x00 };
+    [[nodiscard]] std::vector<uint8_t> GetData() const override {
+        return { static_cast<uint8_t>(is_start_ ? 0x01 : 0x00) };
     }
 };
 

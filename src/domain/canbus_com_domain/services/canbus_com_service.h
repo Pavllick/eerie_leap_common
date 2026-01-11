@@ -35,7 +35,10 @@ public:
     using CommandDataResponseCallback = std::function<void(bool success, std::optional<TResponse> response)>;
 
     template<SpanConstructible TRequest>
-    using CommandDataRequestCallback = std::function<void(std::optional<TRequest> request)>;
+    using CommandDataRequestCallback = std::function<bool(std::optional<TRequest> request)>;
+
+    template<SpanConstructible TRequest>
+    using CommandDataRequestWithResponseCallback = std::function<std::optional<CanbusComCommandResultBase>(std::optional<TRequest> request)>;
 
     CanbusComService(std::shared_ptr<CanbusService> canbus_service);
     virtual ~CanbusComService() = default;
@@ -45,11 +48,52 @@ public:
 
     template<SpanConstructible TRequest>
     void SetCommandHandler(CanbusComCommandCode command_code, CommandDataRequestCallback<TRequest> callback) {
-        cdmp_service_->GetCommandService()->RegisterUserCommandHandler(
+        cdmp_service_->GetCommandService()->RegisterCommandHandler(
             std::to_underlying(command_code),
             [callback](uint8_t _, std::span<const uint8_t> data) {
-                callback(data.empty() ? std::nullopt : std::optional<TRequest>(data));
-        });
+                bool result = callback(data.empty() ? std::nullopt : std::optional<TRequest>(data));
+
+                return CdmpCommandResult {
+                    result ? CdmpResultCode::SUCCESS : CdmpResultCode::FAILURE,
+                    {}
+                };
+            });
+    }
+
+    // NOTE: Usage example:
+    // canbus_com_service_->SetCommandHandler<CanbusComLoggingCommand>(
+    //     CanbusComCommandCode::LOGGING,
+    //     [this](std::optional<CanbusComLoggingCommand> command) {
+    //         std::optional<CanbusComCommandResultBase> result = std::nullopt;
+    //         if(!command.has_value())
+    //             return result;
+
+    //         if(command.value().IsStart())
+    //             result = std::make_optional<CanbusComLoggingCommandResult>(LogWriterStart() == 0);
+    //         else
+    //             result = std::make_optional<CanbusComLoggingCommandResult>(LogWriterStop() == 0);
+
+    //         return result;
+    //     });
+    template<SpanConstructible TRequest>
+    void SetCommandHandler(CanbusComCommandCode command_code, CommandDataRequestWithResponseCallback<TRequest> callback) {
+        cdmp_service_->GetCommandService()->RegisterCommandHandler(
+            std::to_underlying(command_code),
+            [callback](uint8_t _, std::span<const uint8_t> data) {
+                auto result = callback(data.empty() ? std::nullopt : std::optional<TRequest>(data));
+
+                if (result.has_value()) {
+                    return CdmpCommandResult {
+                        CdmpResultCode::SUCCESS,
+                        result->GetData()
+                    };
+                }
+
+                return CdmpCommandResult {
+                    CdmpResultCode::FAILURE,
+                    {}
+                };
+            });
     }
 
     void UnsetCommandHandler(CanbusComCommandCode command_code);

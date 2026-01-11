@@ -661,7 +661,7 @@ VERSION_MISMATCH → OFFLINE:    Device reboot required (no automatic recovery)
 
 ```
 0x00: Success
-0x01: Generic Error
+0x01: Failure
 0x02: Invalid Parameter
 0x03: Unsupported Command
 0x04: Timeout

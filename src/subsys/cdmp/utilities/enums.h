@@ -23,7 +23,7 @@ enum class CdmpHealthStatus : uint8_t {
 // Result codes for Command Response (Base + 3)
 enum class CdmpResultCode : uint8_t {
     SUCCESS = 0x00,
-    GENERIC_ERROR = 0x01,
+    FAILURE = 0x01,
     INVALID_PARAMETER = 0x02,
     UNSUPPORTED_COMMAND = 0x03,
     CANCELLED = 0x04,

@@ -83,8 +83,6 @@ void CdmpCommandService::ProcessRequestFrame(std::span<const uint8_t> frame_data
     try {
         CdmpCommandRequestMessage command = CdmpCommandRequestMessage::FromCanFrame(frame_data);
 
-        LOG_HEXDUMP_INF(frame_data.data(), frame_data.size(), "Command received");
-
         if(command.target_device_id != device_->GetDeviceId()
             && command.target_device_id != CdmpDevice::DEVICE_ID_BROADCAST) {
 

@@ -113,8 +113,6 @@ void CdmpHeartbeatService::SendHeartbeat() {
 
         auto frame_data = heartbeat.ToCanFrame();
         uint32_t frame_id = can_id_manager_->GetHeartbeatCanId();
-
-        k_msleep(device_->GetStaggeredMessageDelay());
         canbus_->SendFrame(frame_id, frame_data);
 
         heartbeat_sequence_number_++;
@@ -141,7 +139,8 @@ WorkQueueTaskResult CdmpHeartbeatService::ProcessPeriodicHeartbeat(CdmpHeartbeat
 
     return {
         .reschedule = instance->heartbeat_enabled_,
-        .delay = K_MSEC(CdmpConstants::HEARTBEAT_INTERVAL_MS)
+        .delay = K_MSEC(CdmpConstants::HEARTBEAT_INTERVAL_MS
+            + instance->device_->GetStaggeredMessageDelay())
     };
 }
 
