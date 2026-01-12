@@ -2,9 +2,9 @@
 
 #include <memory_resource>
 #include <optional>
+#include <string>
 #include <unordered_map>
 #include <variant>
-#include <vector>
 
 #include "subsys/canbus/can_frame.h"
 
@@ -31,7 +31,7 @@ struct ReadingMetadata {
     ReadingMetadata(std::allocator_arg_t, allocator_type alloc)
         : tags(alloc) {}
 
-    ReadingMetadata(const ReadingMetadata&) = delete;
+    ReadingMetadata(const ReadingMetadata& other) = default;
 	ReadingMetadata& operator=(const ReadingMetadata&) noexcept = default;
 	ReadingMetadata& operator=(ReadingMetadata&&) noexcept = default;
 	ReadingMetadata(ReadingMetadata&&) noexcept = default;

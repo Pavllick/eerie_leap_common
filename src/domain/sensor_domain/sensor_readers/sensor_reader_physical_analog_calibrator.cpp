@@ -22,17 +22,18 @@ SensorReaderPhysicalAnalogCalibrator::SensorReaderPhysicalAnalogCalibrator(
             std::move(adc_configuration_manager)) { }
 
 void SensorReaderPhysicalAnalogCalibrator::Read() {
-    auto reading = make_shared_pmr<SensorReading>(Mrm::GetExtPmr(), guid_generator_->Generate(), sensor_);
-    reading->timestamp = time_service_->GetCurrentTime();
+    SensorReading reading(std::allocator_arg, Mrm::GetExtPmr(), guid_generator_->Generate(), sensor_);
+    reading.source = ReadingSource::PROCESSING;
+    reading.timestamp = time_service_->GetCurrentTime();
 
     float voltage = AdcChannelReader();
     float voltage_interpolated = AdcCalibrator::InterpolateToInputRange(voltage);
 
-    reading->value = voltage_interpolated;
-    reading->status = ReadingStatus::CALIBRATION;
+    reading.value = voltage_interpolated;
+    reading.status = ReadingStatus::CALIBRATION;
 
-    reading->metadata.AddTag<float>(ReadingMetadataTag::VOLTAGE, voltage);
-    reading->metadata.AddTag<float>(ReadingMetadataTag::RAW_VALUE, voltage_interpolated);
+    reading.metadata.AddTag<float>(ReadingMetadataTag::VOLTAGE, voltage);
+    reading.metadata.AddTag<float>(ReadingMetadataTag::RAW_VALUE, voltage_interpolated);
 
     sensor_readings_frame_->AddOrUpdateReading(reading);
 }

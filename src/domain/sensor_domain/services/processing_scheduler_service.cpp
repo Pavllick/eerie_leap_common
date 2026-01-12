@@ -2,7 +2,9 @@
 
 #include "subsys/time/time_helpers.hpp"
 #include "subsys/lua_script/lua_script.h"
-#include "domain/sensor_domain/processors/sensor_processor.h"
+#include "domain/sensor_domain/processors/collect_isr_reading_processor.h"
+#include "domain/sensor_domain/processors/adc_reading_processor.h"
+#include "domain/sensor_domain/processors/expression_processor.h"
 #include "domain/sensor_domain/processors/script_processor.h"
 #include "domain/script_domain/utilities/global_fuctions_registry.h"
 
@@ -27,9 +29,11 @@ ProcessingSchedulerService::ProcessingSchedulerService(
         sensor_reader_factory_(std::move(sensor_reader_factory)),
         reading_processors_(std::make_shared<std::vector<std::shared_ptr<IReadingProcessor>>>()) {
 
-    reading_processors_->push_back(std::make_shared<ScriptProcessor>("pre_process_sensor_value"));
-    reading_processors_->push_back(std::make_shared<SensorProcessor>(sensor_readings_frame_));
-    reading_processors_->push_back(std::make_shared<ScriptProcessor>("post_process_sensor_value"));
+    reading_processors_->push_back(std::make_shared<CollectIsrReadingProcessor>(sensor_readings_frame_));
+    reading_processors_->push_back(std::make_shared<ScriptProcessor>("pre_process_sensor_value", sensor_readings_frame_));
+    reading_processors_->push_back(std::make_shared<AdcReadingProcessor>(sensor_readings_frame_));
+    reading_processors_->push_back(std::make_shared<ExpressionProcessor>(sensor_readings_frame_));
+    reading_processors_->push_back(std::make_shared<ScriptProcessor>("post_process_sensor_value", sensor_readings_frame_));
 };
 
 void ProcessingSchedulerService::Initialize() {
@@ -43,16 +47,21 @@ void ProcessingSchedulerService::Initialize() {
 WorkQueueTaskResult ProcessingSchedulerService::ProcessSensorWorkTask(SensorTask* task) {
     try {
         task->reader->Read();
-        auto reading = task->readings_frame->GetReading(task->sensor->id_hash);
 
-        for(auto processor : *task->reading_processors)
-            processor->ProcessReading(reading);
+        if(task->readings_frame->HasReading(task->sensor->id_hash) || task->readings_frame->HasIsrReading(task->sensor->id_hash)) {
+            for(auto processor : *task->reading_processors)
+                processor->ProcessReading(task->sensor->id_hash);
 
-        LOG_DBG("Sensor Reading - ID: %s, Guid: %llu, Value: %.3f, Time: %s",
-            task->sensor->id.c_str(),
-            reading->id.AsUint64(),
-            reading->value.value_or(0.0f),
-            TimeHelpers::GetFormattedString(*reading->timestamp).c_str());
+            auto reading = task->readings_frame->GetReading(task->sensor->id_hash);
+            reading.status = ReadingStatus::PROCESSED;
+            task->readings_frame->AddOrUpdateReading(reading);
+
+            LOG_DBG("Sensor Reading - ID: %s, Guid: %llu, Value: %.3f, Time: %s",
+                task->sensor->id.c_str(),
+                reading.id.AsUint64(),
+                reading.value.value_or(0.0f),
+                TimeHelpers::GetFormattedString(reading.timestamp.value()).c_str());
+        }
     } catch (const std::exception& e) {
         LOG_DBG("Error processing sensor: %s, Error: %s", task->sensor->id.c_str(), e.what());
     }

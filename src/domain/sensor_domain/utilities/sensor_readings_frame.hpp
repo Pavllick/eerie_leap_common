@@ -2,7 +2,7 @@
 
 #include <unordered_map>
 #include <stdexcept>
-#include <memory>
+#include <memory_resource>
 #include <string>
 
 #include <zephyr/spinlock.h>
@@ -16,12 +16,17 @@ using namespace eerie_leap::utilities::string;
 using namespace eerie_leap::domain::sensor_domain::models;
 
 class SensorReadingsFrame {
+public:
+    using allocator_type = std::pmr::polymorphic_allocator<>;
+
 private:
-    std::unordered_map<size_t, std::shared_ptr<SensorReading>> readings_;
+    std::pmr::unordered_map<size_t, SensorReading> isr_readings_;
+    std::pmr::unordered_map<size_t, SensorReading> readings_;
     std::unordered_map<size_t, float> reading_values_;
     mutable std::unordered_map<std::string, size_t> sensor_id_hash_map_;
 
     k_spinlock reading_lock_;
+    allocator_type allocator_;
 
     size_t GetSensorIdHash(const std::string& sensor_id) const {
         if(!sensor_id_hash_map_.contains(sensor_id))
@@ -34,17 +39,50 @@ private:
         throw std::runtime_error("Sensor ID not found");
     }
 
-public:
-    SensorReadingsFrame() = default;
+    void AddOrUpdateReadingIsr(SensorReading& reading) {
+        size_t sensor_id_hash = reading.sensor->id_hash;
 
-    void AddOrUpdateReading(std::shared_ptr<SensorReading> reading) {
+        if(isr_readings_.contains(sensor_id_hash))
+            isr_readings_.erase(sensor_id_hash);
+
+        auto [new_iterator, inserted] = isr_readings_.emplace(sensor_id_hash, std::move(reading));
+
+        const auto& stored_reading = new_iterator->second;
+        if(stored_reading.status == ReadingStatus::PROCESSED && stored_reading.value.has_value())
+            reading_values_[sensor_id_hash] = stored_reading.value.value();
+    }
+
+    void AddOrUpdateReadingProcessing(SensorReading& reading) {
+        size_t sensor_id_hash = reading.sensor->id_hash;
+
+        if(readings_.contains(sensor_id_hash))
+            readings_.erase(sensor_id_hash);
+
+        auto [new_iterator, inserted] = readings_.emplace(sensor_id_hash, std::move(reading));
+
+        const auto& stored_reading = new_iterator->second;
+        if(stored_reading.status == ReadingStatus::PROCESSED && stored_reading.value.has_value())
+            reading_values_[sensor_id_hash] = stored_reading.value.value();
+    }
+
+public:
+    SensorReadingsFrame(std::allocator_arg_t, allocator_type alloc)
+        : isr_readings_(alloc), readings_(alloc), allocator_(alloc) {}
+
+    SensorReadingsFrame(const SensorReadingsFrame&) = delete;
+    SensorReadingsFrame(SensorReadingsFrame&&) = delete;
+    SensorReadingsFrame& operator=(const SensorReadingsFrame&) = delete;
+    SensorReadingsFrame& operator=(SensorReadingsFrame&&) = delete;
+
+    void AddOrUpdateReading(SensorReading reading) {
         auto lock_key = k_spin_lock(&reading_lock_);
 
-        size_t sensor_id_hash = reading->sensor->id_hash;
-
-        readings_[sensor_id_hash] = std::move(reading);
-        if(readings_[sensor_id_hash]->status == ReadingStatus::PROCESSED && readings_[sensor_id_hash]->value.has_value())
-            reading_values_[sensor_id_hash] = readings_[sensor_id_hash]->value.value();
+        if(reading.source == ReadingSource::ISR)
+            AddOrUpdateReadingIsr(reading);
+        else if(reading.source == ReadingSource::PROCESSING)
+            AddOrUpdateReadingProcessing(reading);
+        else
+            throw std::runtime_error("Invalid reading source");
 
         k_spin_unlock(&reading_lock_, lock_key);
     }
@@ -57,6 +95,14 @@ public:
         return readings_.contains(GetSensorIdHash(sensor_id));
     }
 
+    bool HasIsrReading(const size_t sensor_id_hash) const {
+        return isr_readings_.contains(sensor_id_hash);
+    }
+
+    bool HasIsrReading(const std::string& sensor_id) const {
+        return isr_readings_.contains(GetSensorIdHash(sensor_id));
+    }
+
     bool HasReadingValue(const size_t sensor_id_hash) const {
         return reading_values_.contains(sensor_id_hash);
     }
@@ -65,20 +111,36 @@ public:
         return reading_values_.contains(GetSensorIdHash(sensor_id));
     }
 
-    std::shared_ptr<SensorReading> GetReading(const size_t sensor_id_hash) const {
+    SensorReading GetReading(const size_t sensor_id_hash) const {
         if(!HasReading(sensor_id_hash))
             ErrorSensorIdNotFound();
 
         return readings_.at(sensor_id_hash);
     }
 
-    std::shared_ptr<SensorReading> GetReading(const std::string& sensor_id) const {
+    SensorReading GetReading(const std::string& sensor_id) const {
         const size_t sensor_id_hash = GetSensorIdHash(sensor_id);
 
         if(!HasReading(sensor_id_hash))
             ErrorSensorIdNotFound();
 
         return readings_.at(sensor_id_hash);
+    }
+
+    SensorReading GetIsrReading(const size_t sensor_id_hash) const {
+        if(!HasIsrReading(sensor_id_hash))
+            ErrorSensorIdNotFound();
+
+        return isr_readings_.at(sensor_id_hash);
+    }
+
+    SensorReading GetIsrReading(const std::string& sensor_id) const {
+        const size_t sensor_id_hash = GetSensorIdHash(sensor_id);
+
+        if(!HasIsrReading(sensor_id_hash))
+            ErrorSensorIdNotFound();
+
+        return isr_readings_.at(sensor_id_hash);
     }
 
     float GetReadingValue(const size_t sensor_id_hash) const {
@@ -106,7 +168,7 @@ public:
         return &reading_values_.at(sensor_id_hash);
     }
 
-    const std::unordered_map<size_t, std::shared_ptr<SensorReading>>& GetReadings() const {
+    const std::pmr::unordered_map<size_t, SensorReading>& GetReadings() const {
         return readings_;
     }
 

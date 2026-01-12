@@ -20,17 +20,21 @@ CanbusSensorReader::CanbusSensorReader(
         ),
         dbc_(std::move(dbc)) {}
 
-void CanbusSensorReader::Read() {
-    auto reading = CreateRawReading();
-    if(reading == nullptr)
+void CanbusSensorReader::AddOrUpdateReading(const CanFrame can_frame) {
+    auto reading = CreateRawReading(can_frame);
+    if(!reading)
         return;
 
-    reading->value = dbc_->GetMessage(sensor_->configuration.canbus_source->frame_id)->GetSignalValue(
+    reading.value().value = dbc_->GetMessage(sensor_->configuration.canbus_source->frame_id)->GetSignalValue(
         sensor_->configuration.canbus_source->signal_name_hash,
-        reading->metadata.GetTag<CanFrame>(ReadingMetadataTag::CANBUS_DATA).value().data.data());
-    reading->status = ReadingStatus::RAW;
+        can_frame.data.data());
 
-    sensor_readings_frame_->AddOrUpdateReading(reading);
+    if(reading.value().sensor->configuration.type == SensorType::CANBUS_ANALOG)
+        reading.value().metadata.AddTag<float>(ReadingMetadataTag::RAW_VALUE, reading.value().value.value());
+    else if(reading.value().sensor->configuration.type == SensorType::CANBUS_INDICATOR)
+        reading.value().metadata.AddTag<bool>(ReadingMetadataTag::RAW_VALUE, reading.value().value.value() > 0);
+
+    sensor_readings_frame_->AddOrUpdateReading(reading.value());
 }
 
 } // namespace eerie_leap::domain::sensor_domain::sensor_readers

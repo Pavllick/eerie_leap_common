@@ -10,14 +10,14 @@ namespace eerie_leap::domain::sensor_domain::processors {
 
 using namespace eerie_leap::domain::sensor_domain::utilities;
 
-class SensorProcessor : public IReadingProcessor {
+class ExpressionProcessor : public IReadingProcessor {
 private:
     std::shared_ptr<SensorReadingsFrame> sensor_readings_frame_;
 
 public:
-    explicit SensorProcessor(std::shared_ptr<SensorReadingsFrame> sensor_readings_frame);
+    explicit ExpressionProcessor(std::shared_ptr<SensorReadingsFrame> sensor_readings_frame);
 
-    void ProcessReading(std::shared_ptr<SensorReading> reading) override;
+    void ProcessReading(const size_t sensor_id_hash) override;
 };
 
 } // namespace eerie_leap::domain::sensor_domain::processors

@@ -22,10 +22,11 @@ SensorReaderVirtualIndicator::SensorReaderVirtualIndicator(
 }
 
 void SensorReaderVirtualIndicator::Read() {
-    auto reading = make_shared_pmr<SensorReading>(Mrm::GetExtPmr(), guid_generator_->Generate(), sensor_);
-    reading->timestamp = time_service_->GetCurrentTime();
+    SensorReading reading(std::allocator_arg, Mrm::GetExtPmr(), guid_generator_->Generate(), sensor_);
+    reading.source = ReadingSource::PROCESSING;
+    reading.timestamp = time_service_->GetCurrentTime();
 
-    reading->status = ReadingStatus::UNINITIALIZED;
+    reading.status = ReadingStatus::UNINITIALIZED;
 
     sensor_readings_frame_->AddOrUpdateReading(reading);
 }

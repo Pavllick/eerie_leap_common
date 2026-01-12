@@ -20,13 +20,11 @@ using namespace eerie_leap::subsys::canbus;
 class CanbusSensorReaderRaw : public SensorReaderBase {
 protected:
     std::shared_ptr<Canbus> canbus_;
-    CanFrame can_frame_;
-    system_clock::time_point can_frame_timestamp_;
-    k_spinlock can_frame_lock_;
 
     std::unordered_map<uint32_t, std::vector<int>> registered_handler_ids_;
 
-    std::shared_ptr<SensorReading> CreateRawReading();
+    std::optional<SensorReading> CreateRawReading(const CanFrame& can_frame);
+    virtual void AddOrUpdateReading(const CanFrame can_frame);
 
 public:
     CanbusSensorReaderRaw(
@@ -37,7 +35,7 @@ public:
         std::shared_ptr<Canbus> canbus);
     virtual ~CanbusSensorReaderRaw();
 
-    void Read() override;
+    void Read() override {}
 };
 
 } // namespace eerie_leap::domain::sensor_domain::sensor_readers

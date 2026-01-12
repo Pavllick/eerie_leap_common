@@ -7,6 +7,7 @@
 
 #include "utilities/guid/guid.hpp"
 #include "sensor.h"
+#include "reading_source.h"
 #include "reading_status.h"
 #include "reading_metadata.h"
 
@@ -22,6 +23,7 @@ struct SensorReading {
     const std::shared_ptr<Sensor> sensor;
     std::optional<float> value;
     std::optional<system_clock::time_point> timestamp;
+    ReadingSource source = ReadingSource::NONE;
     ReadingStatus status = ReadingStatus::UNINITIALIZED;
     std::optional<std::pmr::string> error_message;
     ReadingMetadata metadata;
@@ -35,9 +37,9 @@ struct SensorReading {
                 sensor(std::move(sensor)),
                 metadata(std::allocator_arg, alloc) {}
 
-    SensorReading(const SensorReading&) = delete;
-	SensorReading& operator=(const SensorReading&) noexcept = default;
-	SensorReading& operator=(SensorReading&&) noexcept = default;
+    SensorReading(const SensorReading& other) = default;
+	SensorReading& operator=(const SensorReading&) = delete;
+	SensorReading& operator=(SensorReading&&) = delete;
 	SensorReading(SensorReading&&) noexcept = default;
 	~SensorReading() = default;
 
@@ -46,9 +48,10 @@ struct SensorReading {
         sensor(other.sensor),
         value(other.value),
         timestamp(other.timestamp),
+        source(other.source),
         status(other.status),
         error_message(other.error_message),
-        metadata(std::move(other.metadata)) {}
+        metadata(std::move(other.metadata), alloc) {}
 };
 
 }

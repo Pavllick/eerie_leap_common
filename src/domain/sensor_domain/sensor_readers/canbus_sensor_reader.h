@@ -20,6 +20,8 @@ class CanbusSensorReader : public CanbusSensorReaderRaw {
 private:
     std::shared_ptr<Dbc> dbc_;
 
+    void AddOrUpdateReading(const CanFrame can_frame) override;
+
 public:
     CanbusSensorReader(
         std::shared_ptr<ITimeService> time_service,
@@ -29,8 +31,6 @@ public:
         std::shared_ptr<Canbus> canbus,
         std::shared_ptr<Dbc> dbc);
     virtual ~CanbusSensorReader() = default;
-
-    void Read() override;
 };
 
 } // namespace eerie_leap::domain::sensor_domain::sensor_readers

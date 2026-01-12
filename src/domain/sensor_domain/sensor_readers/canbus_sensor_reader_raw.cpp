@@ -23,12 +23,7 @@ CanbusSensorReaderRaw::CanbusSensorReaderRaw(
 
     int handler_id = canbus_->RegisterFrameReceivedHandler(
         frame_id,
-        [this](const CanFrame& frame) {
-            auto lock_key = k_spin_lock(&can_frame_lock_);
-            can_frame_ = frame;
-            can_frame_timestamp_ = time_service_->GetCurrentTime();
-            k_spin_unlock(&can_frame_lock_, lock_key);
-        });
+        [this](const CanFrame& frame) { AddOrUpdateReading(frame); });
 
     if(handler_id < 0)
         throw std::runtime_error("Failed to register CAN frame handler for frame ID: " + std::to_string(frame_id));
@@ -44,33 +39,30 @@ CanbusSensorReaderRaw::~CanbusSensorReaderRaw() {
             canbus_->RemoveFrameReceivedHandler(frame_id, handler_id);
 }
 
-std::shared_ptr<SensorReading> CanbusSensorReaderRaw::CreateRawReading() {
-    if(can_frame_.data.empty())
-        return nullptr;
+std::optional<SensorReading> CanbusSensorReaderRaw::CreateRawReading(const CanFrame& can_frame) {
+    if(can_frame.data.empty())
+        return std::nullopt;
 
-    auto reading = make_shared_pmr<SensorReading>(Mrm::GetExtPmr(), guid_generator_->Generate(), sensor_);
+    SensorReading reading(std::allocator_arg, Mrm::GetExtPmr(), guid_generator_->Generate(), sensor_);
+    reading.source = ReadingSource::ISR;
+    reading.timestamp = time_service_->GetCurrentTime();
 
-    reading->value = std::nullopt;
-    reading->status = ReadingStatus::RAW;
+    reading.value = std::nullopt;
+    reading.status = ReadingStatus::RAW;
 
-    auto lock_key = k_spin_lock(&can_frame_lock_);
-    auto can_frame = can_frame_;
-    reading->timestamp = can_frame_timestamp_;
-    k_spin_unlock(&can_frame_lock_, lock_key);
-
-    reading->metadata.AddTag<CanFrame>(
+    reading.metadata.AddTag<CanFrame>(
         ReadingMetadataTag::CANBUS_DATA,
         can_frame);
 
     return reading;
 }
 
-void CanbusSensorReaderRaw::Read() {
-    auto reading = CreateRawReading();
-    if(reading == nullptr)
+void CanbusSensorReaderRaw::AddOrUpdateReading(const CanFrame can_frame) {
+    auto reading = CreateRawReading(can_frame);
+    if(!reading)
         return;
 
-    sensor_readings_frame_->AddOrUpdateReading(reading);
+    sensor_readings_frame_->AddOrUpdateReading(reading.value());
 }
 
 } // namespace eerie_leap::domain::sensor_domain::sensor_readers

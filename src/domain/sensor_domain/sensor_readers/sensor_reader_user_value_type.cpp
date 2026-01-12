@@ -34,11 +34,12 @@ SensorReaderUserValueType::SensorReaderUserValueType(
 }
 
 void SensorReaderUserValueType::Read() {
-    auto reading = make_shared_pmr<SensorReading>(Mrm::GetExtPmr(), guid_generator_->Generate(), sensor_);
-    reading->timestamp = time_service_->GetCurrentTime();
+    SensorReading reading(std::allocator_arg, Mrm::GetExtPmr(), guid_generator_->Generate(), sensor_);
+    reading.source = ReadingSource::PROCESSING;
+    reading.timestamp = time_service_->GetCurrentTime();
 
     if(!has_create_reading_function_) {
-        reading->status = ReadingStatus::UNINITIALIZED;
+        reading.status = ReadingStatus::UNINITIALIZED;
 
         sensor_readings_frame_->AddOrUpdateReading(reading);
         return;
@@ -68,8 +69,8 @@ void SensorReaderUserValueType::Read() {
     auto value = static_cast<float>(lua_tonumber(lua_script->GetState(), -1));
     lua_pop(lua_script->GetState(), 1);
 
-    reading->value = value;
-    reading->status = ReadingStatus::RAW;
+    reading.value = value;
+    reading.status = ReadingStatus::RAW;
 
     sensor_readings_frame_->AddOrUpdateReading(reading);
 }

@@ -42,8 +42,8 @@ WorkQueueTaskResult CalibrationService::ProcessCalibrationWorkTask(SensorTask* t
         auto reading = task->readings_frame->GetReading(task->sensor->id_hash);
 
         LOG_INF("ADC Calibration Reading: Value: %.3f, Time: %s\n",
-            reading->value.value_or(0.0f),
-            TimeHelpers::GetFormattedString(*reading->timestamp).c_str());
+            reading.value.value_or(0.0f),
+            TimeHelpers::GetFormattedString(reading.timestamp.value()).c_str());
     } catch (const std::exception& e) {
         LOG_ERR("Error processing calibrator on channel %d, Error: %s",
             task->sensor->configuration.channel.value_or(-1),
@@ -62,7 +62,7 @@ std::unique_ptr<SensorTask> CalibrationService::CreateCalibrationTask(int channe
     sensor->configuration.channel = channel;
     sensor->configuration.sampling_rate_ms = CONFIG_EERIE_LEAP_ADC_CALIBRATION_SAMPLING_RATE_MS;
 
-    auto sensor_readings_frame = std::make_shared<SensorReadingsFrame>();
+    auto sensor_readings_frame = make_shared_pmr<SensorReadingsFrame>(Mrm::GetExtPmr());
 
     auto task = std::make_unique<SensorTask>();
     task->sampling_rate_ms = K_MSEC(sensor->configuration.sampling_rate_ms);
