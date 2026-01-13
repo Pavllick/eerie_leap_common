@@ -166,9 +166,8 @@ void SensorValidator::ValidateScriptPath(std::string_view sensor_id, const Senso
     }
 }
 
-// TODO: Review sampling_rate_ms == 0 case
 void SensorValidator::ValidateSamplingRateMs(std::string_view sensor_id, const SensorConfiguration& sensor_configuration) {
-    if(sensor_configuration.sampling_rate_ms < 1)
+    if(sensor_configuration.sampling_rate_ms.has_value() && sensor_configuration.sampling_rate_ms.value() <= 0)
         InvalidSensorConfiguration(sensor_id, "Invalid sampling rate value.");
 }
 

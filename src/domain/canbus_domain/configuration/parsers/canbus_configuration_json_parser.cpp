@@ -26,7 +26,7 @@ pmr_unique_ptr<JsonCanbusConfig> CanbusConfigurationJsonParser::Serialize(const 
         for(const auto& message_configuration : channel_configuration.message_configurations) {
             JsonCanMessageConfig message_config;
             message_config.frame_id = message_configuration->frame_id;
-            message_config.send_interval_ms = message_configuration->send_interval_ms.has_value()
+            message_config.send_interval_ms = message_configuration->send_interval_ms.has_value() && message_configuration->send_interval_ms.value() > 0
                 ? message_configuration->send_interval_ms.value()
                 : -1;
             message_config.script_path = json::string(message_configuration->script_path);

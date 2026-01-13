@@ -33,7 +33,7 @@ pmr_unique_ptr<CborCanbusConfig> CanbusConfigurationCborParser::Serialize(const 
             CborCanMessageConfig message_config(std::allocator_arg, Mrm::GetExtPmr());
 
             message_config.frame_id = message_configuration->frame_id;
-            message_config.send_interval_ms = message_configuration->send_interval_ms.has_value()
+            message_config.send_interval_ms = message_configuration->send_interval_ms.has_value() && message_configuration->send_interval_ms.value() > 0
                 ? message_configuration->send_interval_ms.value()
                 : -1;
             message_config.script_path = CborHelpers::ToZcborString(message_configuration->script_path);

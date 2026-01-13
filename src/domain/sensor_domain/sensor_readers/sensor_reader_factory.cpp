@@ -29,27 +29,27 @@ std::unique_ptr<ISensorReader> SensorReaderFactory::Create(std::shared_ptr<Senso
     std::unique_ptr<ISensorReader> sensor_reader;
 
     if(sensor->configuration.type == SensorType::PHYSICAL_ANALOG) {
-        sensor_reader = make_unique<SensorReaderPhysicalAnalog>(
+        sensor_reader = std::make_unique<SensorReaderPhysicalAnalog>(
             time_service_,
             guid_generator_,
             sensor_readings_frame_,
             sensor,
             adc_configuration_manager_);
     } else if(sensor->configuration.type == SensorType::VIRTUAL_ANALOG) {
-        sensor_reader = make_unique<SensorReaderVirtualAnalog>(
+        sensor_reader = std::make_unique<SensorReaderVirtualAnalog>(
             time_service_,
             guid_generator_,
             sensor_readings_frame_,
             sensor);
     } else if(sensor->configuration.type == SensorType::PHYSICAL_INDICATOR) {
-        sensor_reader = make_unique<SensorReaderPhysicalIndicator>(
+        sensor_reader = std::make_unique<SensorReaderPhysicalIndicator>(
             time_service_,
             guid_generator_,
             sensor_readings_frame_,
             sensor,
             gpio_);
     } else if(sensor->configuration.type == SensorType::VIRTUAL_INDICATOR) {
-        sensor_reader = make_unique<SensorReaderVirtualIndicator>(
+        sensor_reader = std::make_unique<SensorReaderVirtualIndicator>(
             time_service_,
             guid_generator_,
             sensor_readings_frame_,
@@ -59,7 +59,7 @@ std::unique_ptr<ISensorReader> SensorReaderFactory::Create(std::shared_ptr<Senso
         if(canbus == nullptr)
             return nullptr;
 
-        sensor_reader = make_unique<CanbusSensorReaderRaw>(
+        sensor_reader = std::make_unique<CanbusSensorReaderRaw>(
             time_service_,
             guid_generator_,
             sensor_readings_frame_,
@@ -82,7 +82,7 @@ std::unique_ptr<ISensorReader> SensorReaderFactory::Create(std::shared_ptr<Senso
         if(!dbc_message->HasSignal(sensor->configuration.canbus_source->signal_name))
             return nullptr;
 
-        sensor_reader = make_unique<CanbusSensorReader>(
+        sensor_reader = std::make_unique<CanbusSensorReader>(
             time_service_,
             guid_generator_,
             sensor_readings_frame_,
@@ -90,7 +90,7 @@ std::unique_ptr<ISensorReader> SensorReaderFactory::Create(std::shared_ptr<Senso
             canbus,
             channel_configuration->dbc);
     } else if(sensor->configuration.type == SensorType::USER_ANALOG || sensor->configuration.type == SensorType::USER_INDICATOR) {
-        sensor_reader = make_unique<SensorReaderUserValueType>(
+        sensor_reader = std::make_unique<SensorReaderUserValueType>(
             time_service_,
             guid_generator_,
             sensor_readings_frame_,

@@ -23,7 +23,9 @@ CanbusSensorReaderRaw::CanbusSensorReaderRaw(
 
     int handler_id = canbus_->RegisterFrameReceivedHandler(
         frame_id,
-        [this](const CanFrame& frame) { AddOrUpdateReading(frame); });
+        [this](const CanFrame& frame) {
+            // AddOrUpdateReading(frame);
+        });
 
     if(handler_id < 0)
         throw std::runtime_error("Failed to register CAN frame handler for frame ID: " + std::to_string(frame_id));

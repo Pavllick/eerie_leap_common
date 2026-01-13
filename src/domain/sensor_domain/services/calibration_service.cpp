@@ -65,7 +65,7 @@ std::unique_ptr<SensorTask> CalibrationService::CreateCalibrationTask(int channe
     auto sensor_readings_frame = make_shared_pmr<SensorReadingsFrame>(Mrm::GetExtPmr());
 
     auto task = std::make_unique<SensorTask>();
-    task->sampling_rate_ms = K_MSEC(sensor->configuration.sampling_rate_ms);
+    task->sampling_rate_ms = K_MSEC(sensor->configuration.sampling_rate_ms.value());
     task->sensor = sensor;
     task->readings_frame = sensor_readings_frame;
 

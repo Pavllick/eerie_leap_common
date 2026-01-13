@@ -50,7 +50,9 @@ pmr_unique_ptr<CborSensorsConfig> SensorsCborParser::Serialize(
 
         sensor_config.configuration.connection_string = CborHelpers::ToZcborString(sensor->configuration.connection_string);
         sensor_config.configuration.script_path = CborHelpers::ToZcborString(sensor->configuration.script_path);
-        sensor_config.configuration.sampling_rate_ms = sensor->configuration.sampling_rate_ms;
+        sensor_config.configuration.sampling_rate_ms = sensor->configuration.sampling_rate_ms.has_value() && sensor->configuration.sampling_rate_ms.value() > 0
+            ? sensor->configuration.sampling_rate_ms.value()
+            : -1;
 
         auto interpolation_method = sensor->configuration.voltage_interpolator != nullptr
             ? sensor->configuration.voltage_interpolator->GetInterpolationMethod()
@@ -140,7 +142,9 @@ std::vector<std::shared_ptr<Sensor>> SensorsCborParser::Deserialize(
             }
         }
 
-        sensor->configuration.sampling_rate_ms = sensor_config.configuration.sampling_rate_ms;
+        sensor->configuration.sampling_rate_ms = sensor_config.configuration.sampling_rate_ms > 0
+            ? std::optional<int>(sensor_config.configuration.sampling_rate_ms)
+            : std::nullopt;
 
         auto interpolation_method = static_cast<InterpolationMethod>(sensor_config.configuration.interpolation_method);
         if(interpolation_method != InterpolationMethod::NONE && sensor_config.configuration.calibration_table_present) {

@@ -41,7 +41,7 @@ struct CborSensorConfigurationConfig {
 	using allocator_type = std::pmr::polymorphic_allocator<>;
 
 	uint32_t type{};
-	uint32_t sampling_rate_ms{};
+	int32_t sampling_rate_ms{};
 	uint32_t interpolation_method{};
 	uint32_t channel{};
 	bool channel_present{};

@@ -83,7 +83,7 @@ std::unique_ptr<SensorTask> ProcessingSchedulerService::CreateSensorTask(std::sh
         return nullptr;
 
     auto task = std::make_unique<SensorTask>();
-    task->sampling_rate_ms = K_MSEC(sensor->configuration.sampling_rate_ms);
+    task->sampling_rate_ms = K_MSEC(sensor->configuration.sampling_rate_ms.value());
     task->sensor = sensor;
     task->readings_frame = sensor_readings_frame_;
     task->reading_processors = reading_processors_;
@@ -114,6 +114,9 @@ void ProcessingSchedulerService::Start() {
     const auto* sensors = sensors_configuration_manager_->Get();
 
     for(const auto& sensor : *sensors) {
+        if(sensor->configuration.GetReadingUpdateMethod() != SensorReadingUpdateMethod::SCHEDULER)
+            continue;
+
         auto task = CreateSensorTask(sensor);
         if(task == nullptr)
             continue;

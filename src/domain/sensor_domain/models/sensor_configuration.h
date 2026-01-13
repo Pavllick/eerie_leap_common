@@ -10,6 +10,7 @@
 #include "domain/sensor_domain/models/sources/canbus_source.h"
 
 #include "sensor_type.h"
+#include "sensor_reading_update_method.h"
 
 namespace eerie_leap::domain::sensor_domain::models {
 
@@ -27,7 +28,8 @@ struct SensorConfiguration {
     std::optional<uint32_t> channel = std::nullopt;
     std::pmr::string connection_string;
     std::pmr::string script_path;
-    uint32_t sampling_rate_ms = 100;
+    // TODO: make optional
+    std::optional<int> sampling_rate_ms = std::nullopt;
 
     pmr_unique_ptr<IVoltageInterpolator> voltage_interpolator = nullptr;
     pmr_unique_ptr<ExpressionEvaluator> expression_evaluator = nullptr;
@@ -58,6 +60,15 @@ struct SensorConfiguration {
         expression_evaluator(std::move(other.expression_evaluator)),
         lua_script(other.lua_script),
         canbus_source(std::move(other.canbus_source)) {}
+
+    SensorReadingUpdateMethod GetReadingUpdateMethod() const {
+        if(sampling_rate_ms.has_value())
+            return SensorReadingUpdateMethod::SCHEDULER;
+        else if(type == SensorType::CANBUS_RAW || type == SensorType::CANBUS_ANALOG || type == SensorType::CANBUS_INDICATOR)
+            return SensorReadingUpdateMethod::ISR;
+
+        return SensorReadingUpdateMethod::NONE;
+    }
 
     void UpdateConnectionString() {
         if(type == SensorType::CANBUS_RAW || type == SensorType::CANBUS_ANALOG || type == SensorType::CANBUS_INDICATOR)

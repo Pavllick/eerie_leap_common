@@ -41,7 +41,9 @@ pmr_unique_ptr<JsonSensorsConfig> SensorsJsonParser::Serialize(
 
         sensor_config->configuration.connection_string = json::string(sensor->configuration.connection_string);
         sensor_config->configuration.script_path = json::string(sensor->configuration.script_path);
-        sensor_config->configuration.sampling_rate_ms = sensor->configuration.sampling_rate_ms;
+        sensor_config->configuration.sampling_rate_ms = sensor->configuration.sampling_rate_ms.has_value() && sensor->configuration.sampling_rate_ms.value() > 0
+            ? sensor->configuration.sampling_rate_ms.value()
+            : -1;
 
         auto interpolation_method = sensor->configuration.voltage_interpolator != nullptr
             ? sensor->configuration.voltage_interpolator->GetInterpolationMethod()
@@ -101,7 +103,9 @@ std::vector<std::shared_ptr<Sensor>> SensorsJsonParser::Deserialize(
         sensor->configuration.channel = std::nullopt;
         if(sensor->configuration.type == SensorType::PHYSICAL_ANALOG || sensor->configuration.type == SensorType::PHYSICAL_INDICATOR)
             sensor->configuration.channel = sensor_config.configuration.channel;
-        sensor->configuration.sampling_rate_ms = sensor_config.configuration.sampling_rate_ms;
+        sensor->configuration.sampling_rate_ms = sensor_config.configuration.sampling_rate_ms > 0
+            ? std::optional<int>(sensor_config.configuration.sampling_rate_ms)
+            : std::nullopt;
 
         sensor->configuration.connection_string = std::string(sensor_config.configuration.connection_string);
         sensor->configuration.UnwrapConnectionString();

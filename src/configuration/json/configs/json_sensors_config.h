@@ -27,10 +27,10 @@ struct JsonSensorCalibrationDataConfig {
 
 struct JsonSensorConfigurationConfig {
     json::string type;
-    int32_t channel;
+    int channel;
     json::string connection_string;
     json::string script_path;
-    uint32_t sampling_rate_ms;
+    int sampling_rate_ms;
     json::string interpolation_method;
     boost::container::pmr::vector<JsonSensorCalibrationDataConfig> calibration_table;
     json::string expression;
@@ -127,7 +127,7 @@ static JsonSensorConfigurationConfig tag_invoke(json::value_to_tag<JsonSensorCon
     result.channel = static_cast<int32_t>(obj.at(NAMEOF_MEMBER(&JsonSensorConfigurationConfig::channel).c_str()).as_int64());
     result.connection_string = obj.at(NAMEOF_MEMBER(&JsonSensorConfigurationConfig::connection_string).c_str()).as_string();
     result.script_path = obj.at(NAMEOF_MEMBER(&JsonSensorConfigurationConfig::script_path).c_str()).as_string();
-    result.sampling_rate_ms = static_cast<uint32_t>(obj.at(NAMEOF_MEMBER(&JsonSensorConfigurationConfig::sampling_rate_ms).c_str()).as_int64());
+    result.sampling_rate_ms = static_cast<int>(obj.at(NAMEOF_MEMBER(&JsonSensorConfigurationConfig::sampling_rate_ms).c_str()).as_int64());
     result.interpolation_method = obj.at(NAMEOF_MEMBER(&JsonSensorConfigurationConfig::interpolation_method).c_str()).as_string();
 
     const json::array& calib_array = obj.at(NAMEOF_MEMBER(&JsonSensorConfigurationConfig::calibration_table).c_str()).as_array();

@@ -131,7 +131,7 @@ void CanbusConfigurationValidator::ValidateMessageFrameId(const CanChannelConfig
 
 void CanbusConfigurationValidator::ValidateMessageSendIntervalMs(const CanChannelConfiguration& channel_configuration) {
     for(const auto& message_configuration : channel_configuration.message_configurations) {
-        if(message_configuration->send_interval_ms.has_value() && message_configuration->send_interval_ms <= 0)
+        if(message_configuration->send_interval_ms.has_value() && message_configuration->send_interval_ms.value() <= 0)
             InvalidCanMessageConfiguration(
                 channel_configuration.bus_channel,
                 message_configuration->frame_id,

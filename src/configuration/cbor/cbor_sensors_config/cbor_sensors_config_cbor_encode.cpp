@@ -67,7 +67,7 @@ static bool encode_CborSensorConfigurationConfig(
 	zcbor_log("%s\r\n", __func__);
 
 	bool res = (((zcbor_list_start_encode(state, 7) && ((((zcbor_uint32_encode(state, (&(*input).type))))
-	&& ((zcbor_uint32_encode(state, (&(*input).sampling_rate_ms))))
+	&& ((zcbor_int32_encode(state, (&(*input).sampling_rate_ms))))
 	&& ((zcbor_uint32_encode(state, (&(*input).interpolation_method))))
 	&& (!(*input).channel_present || zcbor_uint32_encode(state, (&(*input).channel)))
 	&& ((zcbor_tstr_encode(state, (&(*input).connection_string))))

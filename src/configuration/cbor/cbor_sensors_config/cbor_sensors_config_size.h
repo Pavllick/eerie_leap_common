@@ -23,7 +23,7 @@ static size_t cbor_get_size_CborSensorsConfig(const CborSensorsConfig& config) {
 
         builder.AddIndefiniteArrayStart()
             .AddUint(sensor_config.configuration.type)
-            .AddUint(sensor_config.configuration.sampling_rate_ms)
+            .AddInt(sensor_config.configuration.sampling_rate_ms)
             .AddUint(sensor_config.configuration.interpolation_method);
 
 

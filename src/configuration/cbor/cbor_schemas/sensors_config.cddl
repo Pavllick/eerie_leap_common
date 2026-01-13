@@ -8,7 +8,7 @@ CborSensorCalibrationDataMap = { 2*50(float32 => float32) }
 
 CborSensorConfigurationConfig = [
   type: uint,
-  sampling_rate_ms: uint,
+  sampling_rate_ms: int,
   interpolation_method: uint,
   ? channel: uint,
   connection_string: tstr,
