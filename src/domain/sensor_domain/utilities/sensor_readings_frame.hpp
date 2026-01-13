@@ -55,6 +55,9 @@ private:
     void AddOrUpdateReadingProcessing(SensorReading& reading) {
         size_t sensor_id_hash = reading.sensor->id_hash;
 
+        if(isr_readings_.contains(sensor_id_hash))
+            isr_readings_.erase(sensor_id_hash);
+
         if(readings_.contains(sensor_id_hash))
             readings_.erase(sensor_id_hash);
 

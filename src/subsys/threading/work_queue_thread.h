@@ -1,6 +1,6 @@
 #pragma once
 
-#include <vector>
+#include <map>
 #include <string>
 
 #include "thread_base.h"
@@ -15,7 +15,7 @@ private:
 
     bool initialized_ = false;
 
-    std::vector<std::unique_ptr<WorkQueueRunnerTask>> runner_tasks_;
+    std::map<void*, WorkQueueRunnerTask> runner_tasks_;
 
     void IsValid() const;
     static void TaskHandler(k_work* work);

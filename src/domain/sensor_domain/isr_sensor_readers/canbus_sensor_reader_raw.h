@@ -9,20 +9,26 @@
 #include <zephyr/spinlock.h>
 #include <zephyr/sys/atomic.h>
 
+#include "subsys/threading/work_queue_thread.h"
 #include "subsys/canbus/canbus.h"
-#include "domain/sensor_domain/sensor_readers/sensor_reader_base.h"
 
-namespace eerie_leap::domain::sensor_domain::sensor_readers {
+#include "isr_sensor_reader_base.h"
+
+namespace eerie_leap::domain::sensor_domain::isr_sensor_readers {
 
 using namespace std::chrono;
+using namespace eerie_leap::subsys::threading;
 using namespace eerie_leap::subsys::canbus;
 
-class CanbusSensorReaderRaw : public SensorReaderBase {
-protected:
+class CanbusSensorReaderRaw : public IsrSensorReaderBase {
+private:
+    std::shared_ptr<WorkQueueThread> work_queue_thread_;
     std::shared_ptr<Canbus> canbus_;
 
+    k_sem processing_semaphore_;
     std::unordered_map<uint32_t, std::vector<int>> registered_handler_ids_;
 
+protected:
     std::optional<SensorReading> CreateRawReading(const CanFrame& can_frame);
     virtual void AddOrUpdateReading(const CanFrame can_frame);
 
@@ -32,10 +38,10 @@ public:
         std::shared_ptr<GuidGenerator> guid_generator,
         std::shared_ptr<SensorReadingsFrame> sensor_readings_frame,
         std::shared_ptr<Sensor> sensor,
+        ProcessSensorCallback process_sensor_callback,
+        std::shared_ptr<WorkQueueThread> work_queue_thread,
         std::shared_ptr<Canbus> canbus);
     virtual ~CanbusSensorReaderRaw();
-
-    void Read() override {}
 };
 
-} // namespace eerie_leap::domain::sensor_domain::sensor_readers
+} // namespace eerie_leap::domain::sensor_domain::isr_sensor_readers

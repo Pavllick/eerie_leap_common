@@ -8,8 +8,9 @@
 #include "subsys/threading/work_queue_thread.h"
 #include "domain/sensor_domain/configuration/sensors_configuration_manager.h"
 #include "domain/sensor_domain/utilities/sensor_readings_frame.hpp"
-#include "domain/sensor_domain/sensor_readers/sensor_reader_factory.h"
+#include "domain/sensor_domain/isr_sensor_readers/isr_sensor_reader_factory.h"
 #include "domain/sensor_domain/processors/i_reading_processor.h"
+#include "domain/sensor_domain/processors/collect_isr_reading_processor.h"
 
 #include "sensor_task.hpp"
 #include "i_sensors_processing_service.h"
@@ -19,31 +20,31 @@ namespace eerie_leap::domain::sensor_domain::services {
 using namespace eerie_leap::subsys::threading;
 using namespace eerie_leap::domain::sensor_domain::configuration;
 using namespace eerie_leap::domain::sensor_domain::utilities;
+using namespace eerie_leap::domain::sensor_domain::isr_sensor_readers;
 using namespace eerie_leap::domain::sensor_domain::processors;
 
-class ProcessingSchedulerService : public ISensorsProcessingService {
+class ProcessingIsrService : public ISensorsProcessingService {
 private:
     std::shared_ptr<SensorsConfigurationManager> sensors_configuration_manager_;
     std::shared_ptr<SensorReadingsFrame> sensor_readings_frame_;
-    std::shared_ptr<SensorReaderFactory> sensor_reader_factory_;
+    std::shared_ptr<IsrSensorReaderFactory> isr_sensor_reader_factory_;
 
     std::shared_ptr<WorkQueueThread> work_queue_thread_;
-    std::vector<WorkQueueTask<SensorTask>> work_queue_tasks_;
 
+    std::unique_ptr<CollectIsrReadingProcessor> collect_isr_reading_processor_;
     std::shared_ptr<std::vector<std::shared_ptr<IReadingProcessor>>> reading_processors_;
+    std::vector<std::unique_ptr<IIsrSensorReader>> readers_;
 
-    void StartTasks();
-    std::unique_ptr<SensorTask> CreateSensorTask(std::shared_ptr<Sensor> sensor);
-    static WorkQueueTaskResult ProcessSensorWorkTask(SensorTask* task);
+    void ProcessSensor(const Sensor& sensor);
 
 public:
-    ProcessingSchedulerService(
+    ProcessingIsrService(
         std::shared_ptr<SensorsConfigurationManager> sensors_configuration_manager,
         std::shared_ptr<SensorReadingsFrame> sensor_readings_frame,
-        std::shared_ptr<SensorReaderFactory> sensor_reader_factory,
+        std::shared_ptr<IsrSensorReaderFactory> isr_sensor_reader_factory,
         std::shared_ptr<WorkQueueThread> work_queue_thread,
         std::shared_ptr<std::vector<std::shared_ptr<IReadingProcessor>>> reading_processors);
-    ~ProcessingSchedulerService() = default;
+    ~ProcessingIsrService() = default;
 
     void Initialize() override {}
     void Start() override;

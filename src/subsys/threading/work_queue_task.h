@@ -1,5 +1,6 @@
 #pragma once
 
+#include <map>
 #include <functional>
 #include <memory>
 
@@ -99,7 +100,7 @@ public:
 
 private:
     Handler user_handler_;
-    std::vector<std::unique_ptr<WorkQueueRunnerTask>>& runner_tasks_;
+    std::map<void*, WorkQueueRunnerTask>& runner_tasks_;
 
 public:
     WorkQueueRunnerTask(
@@ -107,7 +108,7 @@ public:
         k_work_sync* sync,
         k_work_handler_t handler,
         const Handler& user_handler,
-        std::vector<std::unique_ptr<WorkQueueRunnerTask>>& runner_tasks)
+        std::map<void*, WorkQueueRunnerTask>& runner_tasks)
             : WorkQueueTaskBase(work_q, sync, handler),
             user_handler_(user_handler),
             runner_tasks_(runner_tasks) {}
@@ -120,7 +121,7 @@ public:
         };
     }
 
-    std::vector<std::unique_ptr<WorkQueueRunnerTask>>& GetRunnerTasks() {
+    std::map<void*, WorkQueueRunnerTask>& GetRunnerTasks() {
         return runner_tasks_;
     }
 };

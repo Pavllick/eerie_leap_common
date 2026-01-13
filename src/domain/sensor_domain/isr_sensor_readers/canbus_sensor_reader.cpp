@@ -1,6 +1,6 @@
 #include "canbus_sensor_reader.h"
 
-namespace eerie_leap::domain::sensor_domain::sensor_readers {
+namespace eerie_leap::domain::sensor_domain::isr_sensor_readers {
 
 using namespace eerie_leap::subsys::canbus;
 
@@ -9,6 +9,8 @@ CanbusSensorReader::CanbusSensorReader(
     std::shared_ptr<GuidGenerator> guid_generator,
     std::shared_ptr<SensorReadingsFrame> sensor_readings_frame,
     std::shared_ptr<Sensor> sensor,
+    ProcessSensorCallback process_sensor_callback,
+    std::shared_ptr<WorkQueueThread> work_queue_thread,
     std::shared_ptr<Canbus> canbus,
     std::shared_ptr<Dbc> dbc)
         : CanbusSensorReaderRaw(
@@ -16,6 +18,8 @@ CanbusSensorReader::CanbusSensorReader(
             std::move(guid_generator),
             std::move(sensor_readings_frame),
             std::move(sensor),
+            std::move(process_sensor_callback),
+            std::move(work_queue_thread),
             std::move(canbus)
         ),
         dbc_(std::move(dbc)) {}
@@ -37,4 +41,4 @@ void CanbusSensorReader::AddOrUpdateReading(const CanFrame can_frame) {
     sensor_readings_frame_->AddOrUpdateReading(reading.value());
 }
 
-} // namespace eerie_leap::domain::sensor_domain::sensor_readers
+} // namespace eerie_leap::domain::sensor_domain::isr_sensor_readers

@@ -47,21 +47,17 @@ void WorkQueueThread::RunnerTaskHandler(k_work* work) {
     auto result = task->Execute();
 
     auto& runner_tasks = task->GetRunnerTasks();
-    auto it = std::ranges::find_if(runner_tasks, [task](const std::unique_ptr<WorkQueueRunnerTask>& obj) {
-        return &obj->work == &task->work; });
-
-    if(it != runner_tasks.end())
-        runner_tasks.erase(it);
+    runner_tasks.erase(work);
 }
 
 void WorkQueueThread::Run(const WorkQueueRunnerTask::Handler& handler) {
     IsValid();
 
-    auto task = std::make_unique<WorkQueueRunnerTask>(
+    WorkQueueRunnerTask task(
         &work_q_, &sync_, RunnerTaskHandler, handler, runner_tasks_);
-    runner_tasks_.push_back(std::move(task));
+    runner_tasks_.insert({&task.work.work, std::move(task)});
 
-    runner_tasks_.back()->Schedule();
+    runner_tasks_.at(&task.work.work).Schedule();
 }
 
 } // namespace eerie_leap::subsys::threading

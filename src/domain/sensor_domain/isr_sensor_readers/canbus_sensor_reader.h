@@ -8,10 +8,10 @@
 
 #include "subsys/canbus/canbus.h"
 #include "subsys/dbc/dbc.h"
-#include "domain/sensor_domain/sensor_readers/sensor_reader_base.h"
-#include "domain/sensor_domain/sensor_readers/canbus_sensor_reader_raw.h"
 
-namespace eerie_leap::domain::sensor_domain::sensor_readers {
+#include "canbus_sensor_reader_raw.h"
+
+namespace eerie_leap::domain::sensor_domain::isr_sensor_readers {
 
 using namespace eerie_leap::subsys::canbus;
 using namespace eerie_leap::subsys::dbc;
@@ -28,9 +28,11 @@ public:
         std::shared_ptr<GuidGenerator> guid_generator,
         std::shared_ptr<SensorReadingsFrame> sensor_readings_frame,
         std::shared_ptr<Sensor> sensor,
+        ProcessSensorCallback process_sensor_callback,
+        std::shared_ptr<WorkQueueThread> work_queue_thread,
         std::shared_ptr<Canbus> canbus,
         std::shared_ptr<Dbc> dbc);
     virtual ~CanbusSensorReader() = default;
 };
 
-} // namespace eerie_leap::domain::sensor_domain::sensor_readers
+} // namespace eerie_leap::domain::sensor_domain::isr_sensor_readers

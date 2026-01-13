@@ -1,8 +1,9 @@
 #include <stdexcept>
 
 #include "canbus_sensor_reader_raw.h"
+#include "zephyr/kernel.h"
 
-namespace eerie_leap::domain::sensor_domain::sensor_readers {
+namespace eerie_leap::domain::sensor_domain::isr_sensor_readers {
 
 using namespace eerie_leap::subsys::canbus;
 
@@ -11,20 +12,41 @@ CanbusSensorReaderRaw::CanbusSensorReaderRaw(
     std::shared_ptr<GuidGenerator> guid_generator,
     std::shared_ptr<SensorReadingsFrame> sensor_readings_frame,
     std::shared_ptr<Sensor> sensor,
+    ProcessSensorCallback process_sensor_callback,
+    std::shared_ptr<WorkQueueThread> work_queue_thread,
     std::shared_ptr<Canbus> canbus)
-        : SensorReaderBase(
+        : IsrSensorReaderBase(
             std::move(time_service),
             std::move(guid_generator),
             std::move(sensor_readings_frame),
-            std::move(sensor)),
+            std::move(sensor),
+            std::move(process_sensor_callback)),
+        work_queue_thread_(std::move(work_queue_thread)),
         canbus_(std::move(canbus)) {
+
+    k_sem_init(&processing_semaphore_, 1, 1);
 
     uint32_t frame_id = sensor_->configuration.canbus_source->frame_id;
 
     int handler_id = canbus_->RegisterFrameReceivedHandler(
         frame_id,
         [this](const CanFrame& frame) {
-            // AddOrUpdateReading(frame);
+            if(k_sem_take(&processing_semaphore_, K_NO_WAIT) != 0)
+                return;
+
+            try {
+                work_queue_thread_->Run(
+                    [this, frame]() {
+                        try {
+                            AddOrUpdateReading(frame);
+                            process_sensor_callback_(*sensor_);
+                        } catch (...) {}
+
+                        k_sem_give(&processing_semaphore_);
+                    });
+            } catch (...) {
+                k_sem_give(&processing_semaphore_);
+            }
         });
 
     if(handler_id < 0)
@@ -67,4 +89,4 @@ void CanbusSensorReaderRaw::AddOrUpdateReading(const CanFrame can_frame) {
     sensor_readings_frame_->AddOrUpdateReading(reading.value());
 }
 
-} // namespace eerie_leap::domain::sensor_domain::sensor_readers
+} // namespace eerie_leap::domain::sensor_domain::isr_sensor_readers

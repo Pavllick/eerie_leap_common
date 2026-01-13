@@ -9,7 +9,7 @@
 #include "subsys/threading/work_queue_thread.h"
 #include "subsys/time/i_time_service.h"
 #include "domain/sensor_domain/configuration/adc_configuration_manager.h"
-#include "domain/sensor_domain/services/processing_scheduler_service.h"
+#include "domain/sensor_domain/services/sensors_processing_service.h"
 
 #include "sensor_task.hpp"
 
@@ -34,7 +34,7 @@ private:
     std::shared_ptr<ITimeService> time_service_;
     std::shared_ptr<GuidGenerator> guid_generator_;
     std::shared_ptr<AdcConfigurationManager> adc_configuration_manager_;
-    std::shared_ptr<ProcessingSchedulerService> processing_scheduler_service_;
+    std::shared_ptr<SensorsProcessingService> sensors_processing_service_;
 
     std::unique_ptr<SensorTask> CreateCalibrationTask(int channel);
     static WorkQueueTaskResult ProcessCalibrationWorkTask(SensorTask* task);
@@ -44,7 +44,7 @@ public:
         std::shared_ptr<ITimeService> time_service,
         std::shared_ptr<GuidGenerator> guid_generator,
         std::shared_ptr<AdcConfigurationManager> adc_configuration_manager,
-        std::shared_ptr<ProcessingSchedulerService> processing_scheduler_service);
+        std::shared_ptr<SensorsProcessingService> sensors_processing_service);
 
     void Initialize();
 

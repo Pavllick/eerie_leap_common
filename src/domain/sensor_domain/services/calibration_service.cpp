@@ -21,12 +21,12 @@ CalibrationService::CalibrationService(
     std::shared_ptr<ITimeService> time_service,
     std::shared_ptr<GuidGenerator> guid_generator,
     std::shared_ptr<AdcConfigurationManager> adc_configuration_manager,
-    std::shared_ptr<ProcessingSchedulerService> processing_scheduler_service)
+    std::shared_ptr<SensorsProcessingService> sensors_processing_service)
     : work_queue_thread_(nullptr),
     time_service_(std::move(time_service)),
     guid_generator_(std::move(guid_generator)),
     adc_configuration_manager_(std::move(adc_configuration_manager)),
-    processing_scheduler_service_(std::move(processing_scheduler_service)) {};
+    sensors_processing_service_(std::move(sensors_processing_service)) {};
 
 void CalibrationService::Initialize() {
     work_queue_thread_ = std::make_unique<WorkQueueThread>(
@@ -80,7 +80,7 @@ std::unique_ptr<SensorTask> CalibrationService::CreateCalibrationTask(int channe
 }
 
 void CalibrationService::Start(int channel) {
-    processing_scheduler_service_->Pause();
+    sensors_processing_service_->Pause();
 
     auto adc_manager = adc_configuration_manager_->Get();
     adc_manager->UpdateSamplesCount(CONFIG_EERIE_LEAP_ADC_CALIBRATION_SAMPLES_COUNT);
@@ -110,7 +110,7 @@ void CalibrationService::Stop() {
     auto adc_manager = adc_configuration_manager_->Get();
     adc_manager->ResetSamplesCount();
 
-    processing_scheduler_service_->Resume();
+    sensors_processing_service_->Resume();
 }
 
 } // namespace eerie_leap::domain::sensor_domain::services

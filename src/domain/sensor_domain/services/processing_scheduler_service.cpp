@@ -2,10 +2,6 @@
 
 #include "subsys/time/time_helpers.hpp"
 #include "subsys/lua_script/lua_script.h"
-#include "domain/sensor_domain/processors/collect_isr_reading_processor.h"
-#include "domain/sensor_domain/processors/adc_reading_processor.h"
-#include "domain/sensor_domain/processors/expression_processor.h"
-#include "domain/sensor_domain/processors/script_processor.h"
 #include "domain/script_domain/utilities/global_fuctions_registry.h"
 
 #include "processing_scheduler_service.h"
@@ -17,44 +13,33 @@ using namespace eerie_leap::subsys::lua_script;
 using namespace eerie_leap::domain::sensor_domain::models;
 using namespace eerie_leap::domain::script_domain::utilities;
 
-LOG_MODULE_REGISTER(processing_scheduler_logger);
+LOG_MODULE_DECLARE(processing_service_logger);
 
 ProcessingSchedulerService::ProcessingSchedulerService(
     std::shared_ptr<SensorsConfigurationManager> sensors_configuration_manager,
     std::shared_ptr<SensorReadingsFrame> sensor_readings_frame,
-    std::shared_ptr<SensorReaderFactory> sensor_reader_factory)
-        : work_queue_thread_(nullptr),
-        sensors_configuration_manager_(std::move(sensors_configuration_manager)),
+    std::shared_ptr<SensorReaderFactory> sensor_reader_factory,
+    std::shared_ptr<WorkQueueThread> work_queue_thread,
+    std::shared_ptr<std::vector<std::shared_ptr<IReadingProcessor>>> reading_processors)
+        : sensors_configuration_manager_(std::move(sensors_configuration_manager)),
         sensor_readings_frame_(std::move(sensor_readings_frame)),
         sensor_reader_factory_(std::move(sensor_reader_factory)),
-        reading_processors_(std::make_shared<std::vector<std::shared_ptr<IReadingProcessor>>>()) {
-
-    reading_processors_->push_back(std::make_shared<CollectIsrReadingProcessor>(sensor_readings_frame_));
-    reading_processors_->push_back(std::make_shared<ScriptProcessor>("pre_process_sensor_value", sensor_readings_frame_));
-    reading_processors_->push_back(std::make_shared<AdcReadingProcessor>(sensor_readings_frame_));
-    reading_processors_->push_back(std::make_shared<ExpressionProcessor>(sensor_readings_frame_));
-    reading_processors_->push_back(std::make_shared<ScriptProcessor>("post_process_sensor_value", sensor_readings_frame_));
-};
-
-void ProcessingSchedulerService::Initialize() {
-    work_queue_thread_ = std::make_unique<WorkQueueThread>(
-        "processing_scheduler_service",
-        thread_stack_size_,
-        thread_priority_);
-    work_queue_thread_->Initialize();
-}
+        work_queue_thread_(std::move(work_queue_thread)),
+        reading_processors_(std::move(reading_processors)) {};
 
 WorkQueueTaskResult ProcessingSchedulerService::ProcessSensorWorkTask(SensorTask* task) {
     try {
         task->reader->Read();
 
-        if(task->readings_frame->HasReading(task->sensor->id_hash) || task->readings_frame->HasIsrReading(task->sensor->id_hash)) {
+        if(task->readings_frame->HasReading(task->sensor->id_hash)) {
             for(auto processor : *task->reading_processors)
                 processor->ProcessReading(task->sensor->id_hash);
 
             auto reading = task->readings_frame->GetReading(task->sensor->id_hash);
-            reading.status = ReadingStatus::PROCESSED;
-            task->readings_frame->AddOrUpdateReading(reading);
+            if(reading.status < ReadingStatus::PROCESSED) {
+                reading.status = ReadingStatus::PROCESSED;
+                task->readings_frame->AddOrUpdateReading(reading);
+            }
 
             LOG_DBG("Sensor Reading - ID: %s, Guid: %llu, Value: %.3f, Time: %s",
                 task->sensor->id.c_str(),
@@ -73,7 +58,6 @@ WorkQueueTaskResult ProcessingSchedulerService::ProcessSensorWorkTask(SensorTask
 }
 
 std::unique_ptr<SensorTask> ProcessingSchedulerService::CreateSensorTask(std::shared_ptr<Sensor> sensor) {
-    InitializeScript(sensor);
     auto reader = sensor_reader_factory_->Create(sensor);
 
     if(reader == nullptr)
@@ -102,17 +86,12 @@ std::unique_ptr<SensorTask> ProcessingSchedulerService::CreateSensorTask(std::sh
 void ProcessingSchedulerService::StartTasks() {
     for(auto& work_queue_task : work_queue_tasks_)
         work_queue_task.Schedule();
-
-    k_sleep(K_MSEC(1));
-}
-
-void ProcessingSchedulerService::RegisterReadingProcessor(std::shared_ptr<IReadingProcessor> processor) {
-    reading_processors_->push_back(processor);
 }
 
 void ProcessingSchedulerService::Start() {
     const auto* sensors = sensors_configuration_manager_->Get();
 
+    work_queue_tasks_.clear();
     for(const auto& sensor : *sensors) {
         if(sensor->configuration.GetReadingUpdateMethod() != SensorReadingUpdateMethod::SCHEDULER)
             continue;
@@ -127,15 +106,11 @@ void ProcessingSchedulerService::Start() {
     }
 
     StartTasks();
-
-    LOG_INF("Processing Scheduler Service started.");
 }
 
-void ProcessingSchedulerService::Restart() {
+void ProcessingSchedulerService::Stop() {
     Pause();
     work_queue_tasks_.clear();
-    sensor_readings_frame_->ClearReadings();
-    Start();
 }
 
 void ProcessingSchedulerService::Pause() {
@@ -145,25 +120,11 @@ void ProcessingSchedulerService::Pause() {
         while(work_queue_task.Cancel())
             k_sleep(K_MSEC(1));
     }
-
-    LOG_INF("Processing Scheduler Service stopped.");
 }
 
 void ProcessingSchedulerService::Resume() {
     for(auto& work_queue_task : work_queue_tasks_)
         work_queue_task.Schedule();
-
-    LOG_INF("Processing Scheduler Service resumed.");
-}
-
-void ProcessingSchedulerService::InitializeScript(std::shared_ptr<Sensor> sensor) {
-    auto lua_script = sensor->configuration.lua_script;
-
-    if(lua_script == nullptr)
-        return;
-
-    GlobalFunctionsRegistry::RegisterGetSensorValue(*lua_script, *sensor_readings_frame_);
-    GlobalFunctionsRegistry::RegisterUpdateSensorValue(*lua_script, *sensor_readings_frame_);
 }
 
 } // namespace eerie_leap::domain::sensor_domain::services
