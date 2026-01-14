@@ -24,10 +24,10 @@ using namespace eerie_leap::domain::sensor_domain::configuration::parsers;
 
 class SensorsConfigurationManager {
 private:
-    std::shared_ptr<IFsService> sd_fs_service_;
-
     std::unique_ptr<CborConfigurationService<CborSensorsConfig>> cbor_configuration_service_;
     std::unique_ptr<JsonConfigurationService<JsonSensorsConfig>> json_configuration_service_;
+
+    std::shared_ptr<IFsService> sd_fs_service_;
 
     std::unique_ptr<SensorsCborParser> cbor_parser_;
     std::unique_ptr<SensorsJsonParser> json_parser_;
@@ -43,9 +43,9 @@ private:
 
 public:
     SensorsConfigurationManager(
-        std::shared_ptr<IFsService> sd_fs_service,
         std::unique_ptr<CborConfigurationService<CborSensorsConfig>> cbor_configuration_service,
         std::unique_ptr<JsonConfigurationService<JsonSensorsConfig>> json_configuration_service,
+        std::shared_ptr<IFsService> sd_fs_service,
         int gpio_channel_count,
         int adc_channel_count);
 

@@ -24,13 +24,13 @@ LOG_MODULE_DECLARE(processing_service_logger);
 SensorsProcessingService::SensorsProcessingService(
     std::shared_ptr<SensorsConfigurationManager> sensors_configuration_manager,
     std::shared_ptr<SensorReadingsFrame> sensor_readings_frame,
-    std::shared_ptr<SensorReaderFactory> sensor_reader_factory,
-    std::shared_ptr<IsrSensorReaderFactory> isr_sensor_reader_factory)
+    std::shared_ptr<IsrSensorReaderFactory> isr_sensor_reader_factory,
+    std::shared_ptr<SensorReaderFactory> sensor_reader_factory)
         : work_queue_thread_(nullptr),
         sensors_configuration_manager_(std::move(sensors_configuration_manager)),
         sensor_readings_frame_(std::move(sensor_readings_frame)),
-        sensor_reader_factory_(std::move(sensor_reader_factory)),
         isr_sensor_reader_factory_(std::move(isr_sensor_reader_factory)),
+        sensor_reader_factory_(std::move(sensor_reader_factory)),
         reading_processors_(std::make_shared<std::vector<std::shared_ptr<IReadingProcessor>>>()) {
 
     work_queue_thread_ = std::make_shared<WorkQueueThread>(
@@ -43,18 +43,23 @@ SensorsProcessingService::SensorsProcessingService(
     reading_processors_->push_back(std::make_shared<ExpressionProcessor>(sensor_readings_frame_));
     reading_processors_->push_back(std::make_shared<ScriptProcessor>("post_process_sensor_value", sensor_readings_frame_));
 
-    processing_services_.emplace_back(std::make_unique<ProcessingIsrService>(
-        sensors_configuration_manager_,
-        sensor_readings_frame_,
-        isr_sensor_reader_factory_,
-        work_queue_thread_,
-        reading_processors_));
-    processing_services_.emplace_back(std::make_unique<ProcessingSchedulerService>(
-        sensors_configuration_manager_,
-        sensor_readings_frame_,
-        sensor_reader_factory_,
-        work_queue_thread_,
-        reading_processors_));
+    if(isr_sensor_reader_factory_) {
+        processing_services_.emplace_back(std::make_unique<ProcessingIsrService>(
+            sensors_configuration_manager_,
+            sensor_readings_frame_,
+            isr_sensor_reader_factory_,
+            work_queue_thread_,
+            reading_processors_));
+    }
+
+    if(sensor_reader_factory_) {
+        processing_services_.emplace_back(std::make_unique<ProcessingSchedulerService>(
+            sensors_configuration_manager_,
+            sensor_readings_frame_,
+            sensor_reader_factory_,
+            work_queue_thread_,
+            reading_processors_));
+    }
 };
 
 void SensorsProcessingService::Initialize() {

@@ -9,14 +9,14 @@ namespace eerie_leap::domain::sensor_domain::configuration {
 LOG_MODULE_REGISTER(sensors_config_ctrl_logger);
 
 SensorsConfigurationManager::SensorsConfigurationManager(
-    std::shared_ptr<IFsService> sd_fs_service,
     std::unique_ptr<CborConfigurationService<CborSensorsConfig>> cbor_configuration_service,
     std::unique_ptr<JsonConfigurationService<JsonSensorsConfig>> json_configuration_service,
+    std::shared_ptr<IFsService> sd_fs_service,
     int gpio_channel_count,
     int adc_channel_count)
-        : sd_fs_service_(std::move(sd_fs_service)),
-        cbor_configuration_service_(std::move(cbor_configuration_service)),
+        : cbor_configuration_service_(std::move(cbor_configuration_service)),
         json_configuration_service_(std::move(json_configuration_service)),
+        sd_fs_service_(std::move(sd_fs_service)),
         gpio_channel_count_(gpio_channel_count),
         adc_channel_count_(adc_channel_count) {
 

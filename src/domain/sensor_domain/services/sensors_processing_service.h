@@ -32,8 +32,8 @@ private:
 
     std::shared_ptr<SensorsConfigurationManager> sensors_configuration_manager_;
     std::shared_ptr<SensorReadingsFrame> sensor_readings_frame_;
-    std::shared_ptr<SensorReaderFactory> sensor_reader_factory_;
     std::shared_ptr<IsrSensorReaderFactory> isr_sensor_reader_factory_;
+    std::shared_ptr<SensorReaderFactory> sensor_reader_factory_;
 
     std::shared_ptr<std::vector<std::shared_ptr<IReadingProcessor>>> reading_processors_;
     std::vector<std::unique_ptr<ISensorsProcessingService>> processing_services_;
@@ -44,8 +44,8 @@ public:
     SensorsProcessingService(
         std::shared_ptr<SensorsConfigurationManager> sensors_configuration_manager,
         std::shared_ptr<SensorReadingsFrame> sensor_readings_frame,
-        std::shared_ptr<SensorReaderFactory> sensor_reader_factory,
-        std::shared_ptr<IsrSensorReaderFactory> isr_sensor_reader_factory);
+        std::shared_ptr<IsrSensorReaderFactory> isr_sensor_reader_factory,
+        std::shared_ptr<SensorReaderFactory> sensor_reader_factory);
     ~SensorsProcessingService() = default;
 
     void Initialize() override;
