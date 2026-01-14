@@ -6,7 +6,10 @@
 namespace eerie_leap::subsys::threading {
 
 WorkQueueThread::WorkQueueThread(std::string name, int stack_size, int priority, bool is_cooperative)
-    : ThreadBase(std::move(name), stack_size, priority, is_cooperative) {}
+    : ThreadBase(std::move(name), stack_size, priority, is_cooperative) {
+
+    k_mutex_init(&runner_tasks_mutex_);
+}
 
 WorkQueueThread::~WorkQueueThread() {
     k_work_queue_stop(&work_q_, K_FOREVER);
@@ -46,18 +49,28 @@ void WorkQueueThread::RunnerTaskHandler(k_work* work) {
     WorkQueueRunnerTask* task = CONTAINER_OF(work, WorkQueueRunnerTask, work);
     auto result = task->Execute();
 
-    auto& runner_tasks = task->GetRunnerTasks();
-    runner_tasks.erase(work);
+    auto mutex = task->GetMutex();
+
+    k_mutex_lock(mutex, K_FOREVER);
+    task->GetRunnerTasks().erase(work);
+    k_mutex_unlock(mutex);
 }
 
 void WorkQueueThread::Run(const WorkQueueRunnerTask::Handler& handler) {
     IsValid();
 
-    WorkQueueRunnerTask task(
-        &work_q_, &sync_, RunnerTaskHandler, handler, runner_tasks_);
-    runner_tasks_.insert({&task.work.work, std::move(task)});
+    try {
+        auto task = std::make_unique<WorkQueueRunnerTask>(
+            &work_q_, &sync_, RunnerTaskHandler, handler, &runner_tasks_mutex_, runner_tasks_);
+        void* work_ptr = &task->work;
 
-    runner_tasks_.at(&task.work.work).Schedule();
+        k_mutex_lock(&runner_tasks_mutex_, K_FOREVER);
+        if(runner_tasks_.insert({work_ptr, std::move(task)}).second)
+            runner_tasks_.at(work_ptr)->Schedule();
+        k_mutex_unlock(&runner_tasks_mutex_);
+    } catch (const std::exception& e) {
+        printk("Exception in WorkQueueThread::Run: %s\n", e.what());
+    }
 }
 
 } // namespace eerie_leap::subsys::threading

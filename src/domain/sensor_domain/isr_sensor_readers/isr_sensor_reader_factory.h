@@ -4,6 +4,7 @@
 
 #include "utilities/guid/guid_generator.h"
 #include "subsys/time/i_time_service.h"
+#include "subsys/threading/work_queue_thread.h"
 
 #include "domain/sensor_domain/configuration/adc_configuration_manager.h"
 #include "domain/sensor_domain/utilities/sensor_readings_frame.hpp"
@@ -15,6 +16,7 @@ namespace eerie_leap::domain::sensor_domain::isr_sensor_readers {
 
 using namespace eerie_leap::utilities::guid;
 using namespace eerie_leap::subsys::time;
+using namespace eerie_leap::subsys::threading;
 
 using namespace eerie_leap::domain::sensor_domain::configuration;
 using namespace eerie_leap::domain::sensor_domain::utilities;

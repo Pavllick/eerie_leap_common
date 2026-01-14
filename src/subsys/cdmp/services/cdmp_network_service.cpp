@@ -137,6 +137,7 @@ void CdmpNetworkService::StartInitialization() {
         const auto& backoff = CdmpTimeouts::RETRY_BACKOFFS_MS[backoff_index];
 
         SendDiscoveryRequest();
+        LOG_INF("Sending discovery request with backoff: %d ms", backoff);
         k_msleep(backoff);
 
         if(discovery_response_received_)
@@ -150,8 +151,6 @@ void CdmpNetworkService::StartInitialization() {
                 }
             }
         }
-
-        LOG_DBG("Retry discovery attempt with backoff: %d ms", backoff);
     }
 
     device_->ClaimId();

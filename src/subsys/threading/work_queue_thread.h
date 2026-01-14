@@ -12,10 +12,11 @@ class WorkQueueThread : public ThreadBase {
 private:
     k_work_q work_q_;
     k_work_sync sync_;
+    k_mutex runner_tasks_mutex_;
 
     bool initialized_ = false;
 
-    std::map<void*, WorkQueueRunnerTask> runner_tasks_;
+    std::map<void*, std::unique_ptr<WorkQueueRunnerTask>> runner_tasks_;
 
     void IsValid() const;
     static void TaskHandler(k_work* work);

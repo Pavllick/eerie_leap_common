@@ -99,8 +99,9 @@ public:
     using Handler = std::function<void()>;
 
 private:
+    k_mutex* runner_tasks_mutex_;
     Handler user_handler_;
-    std::map<void*, WorkQueueRunnerTask>& runner_tasks_;
+    std::map<void*, std::unique_ptr<WorkQueueRunnerTask>>& runner_tasks_;
 
 public:
     WorkQueueRunnerTask(
@@ -108,9 +109,11 @@ public:
         k_work_sync* sync,
         k_work_handler_t handler,
         const Handler& user_handler,
-        std::map<void*, WorkQueueRunnerTask>& runner_tasks)
+        k_mutex* runner_tasks_mutex,
+        std::map<void*, std::unique_ptr<WorkQueueRunnerTask>>& runner_tasks)
             : WorkQueueTaskBase(work_q, sync, handler),
             user_handler_(user_handler),
+            runner_tasks_mutex_(runner_tasks_mutex),
             runner_tasks_(runner_tasks) {}
 
     WorkQueueTaskResult Execute() override {
@@ -121,8 +124,12 @@ public:
         };
     }
 
-    std::map<void*, WorkQueueRunnerTask>& GetRunnerTasks() {
+    std::map<void*, std::unique_ptr<WorkQueueRunnerTask>>& GetRunnerTasks() {
         return runner_tasks_;
+    }
+
+    k_mutex* GetMutex() {
+        return runner_tasks_mutex_;
     }
 };
 
