@@ -26,6 +26,15 @@ using CanFrameHandler = std::function<void (const CanFrame&)>;
 
 class Canbus : public IThread {
 private:
+    struct IsrCanFrameWrapper {
+        Canbus* canbus;
+        can_frame frame;
+    };
+
+    static constexpr int FRAME_MSGQ_SIZE = 8;
+    char frame_msgq_buffer_[FRAME_MSGQ_SIZE * sizeof(IsrCanFrameWrapper)];
+    k_msgq frame_msgq_;
+
     const device *canbus_dev_;
     std::unordered_map<uint32_t, can_filter> can_filters_;
     std::unordered_map<uint32_t, std::unordered_map<int, CanFrameHandler>> handlers_;
@@ -44,9 +53,9 @@ private:
     static constexpr uint32_t MIN_FRAMES_FOR_DETECTION = 3;
 
     static constexpr int k_stack_size_ = 2048;
-    static constexpr int k_priority_ = 6;
+    static constexpr int k_priority_ = -10;
 
-    std::unique_ptr<Thread> activity_monitor_thread_;
+    std::unique_ptr<Thread> thread_;
 
     // Ordered by most common first
     static constexpr std::array<uint32_t, 9> classical_can_supported_bitrates_ = {
@@ -60,6 +69,8 @@ private:
     };
 
     void ThreadEntry() override;
+    void BitrateAutodetectTask();
+    void ProcessFramesTask();
 
     bool StartActivityMonitoring();
     void StopActivityMonitoring();

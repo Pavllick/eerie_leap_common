@@ -22,10 +22,11 @@ public:
 private:
     std::pmr::unordered_map<size_t, SensorReading> isr_readings_;
     std::pmr::unordered_map<size_t, SensorReading> readings_;
+    std::pmr::unordered_map<size_t, SensorReading> processed_readings_;
     std::unordered_map<size_t, float> reading_values_;
     mutable std::unordered_map<std::string, size_t> sensor_id_hash_map_;
 
-    k_spinlock reading_lock_;
+    mutable k_sem processing_semaphore_;
     allocator_type allocator_;
 
     size_t GetSensorIdHash(const std::string& sensor_id) const {
@@ -44,12 +45,15 @@ private:
 
         if(isr_readings_.contains(sensor_id_hash))
             isr_readings_.erase(sensor_id_hash);
+        isr_readings_.insert({ sensor_id_hash, reading });
 
-        auto [new_iterator, inserted] = isr_readings_.emplace(sensor_id_hash, std::move(reading));
+        if(reading.status == ReadingStatus::PROCESSED && reading.value.has_value()) {
+            reading_values_[sensor_id_hash] = reading.value.value();
 
-        const auto& stored_reading = new_iterator->second;
-        if(stored_reading.status == ReadingStatus::PROCESSED && stored_reading.value.has_value())
-            reading_values_[sensor_id_hash] = stored_reading.value.value();
+            if(processed_readings_.contains(sensor_id_hash))
+                processed_readings_.erase(sensor_id_hash);
+            processed_readings_.insert({ sensor_id_hash, reading });
+        }
     }
 
     void AddOrUpdateReadingProcessing(SensorReading& reading) {
@@ -60,17 +64,24 @@ private:
 
         if(readings_.contains(sensor_id_hash))
             readings_.erase(sensor_id_hash);
+        readings_.insert({ sensor_id_hash, reading });
 
-        auto [new_iterator, inserted] = readings_.emplace(sensor_id_hash, std::move(reading));
+        if(reading.status == ReadingStatus::PROCESSED && reading.value.has_value()) {
+            reading_values_[sensor_id_hash] = reading.value.value();
 
-        const auto& stored_reading = new_iterator->second;
-        if(stored_reading.status == ReadingStatus::PROCESSED && stored_reading.value.has_value())
-            reading_values_[sensor_id_hash] = stored_reading.value.value();
+            if(processed_readings_.contains(sensor_id_hash))
+                processed_readings_.erase(sensor_id_hash);
+
+            processed_readings_.insert({ sensor_id_hash, reading });
+        }
     }
 
 public:
     SensorReadingsFrame(std::allocator_arg_t, allocator_type alloc)
-        : isr_readings_(alloc), readings_(alloc), allocator_(alloc) {}
+        : isr_readings_(alloc), readings_(alloc), processed_readings_(alloc), allocator_(alloc) {
+
+        k_sem_init(&processing_semaphore_, 1, 1);
+    }
 
     SensorReadingsFrame(const SensorReadingsFrame&) = delete;
     SensorReadingsFrame(SensorReadingsFrame&&) = delete;
@@ -78,7 +89,7 @@ public:
     SensorReadingsFrame& operator=(SensorReadingsFrame&&) = delete;
 
     void AddOrUpdateReading(SensorReading reading) {
-        auto lock_key = k_spin_lock(&reading_lock_);
+        k_sem_take(&processing_semaphore_, K_FOREVER);
 
         if(reading.source == ReadingSource::ISR)
             AddOrUpdateReadingIsr(reading);
@@ -87,15 +98,7 @@ public:
         else
             throw std::runtime_error("Invalid reading source");
 
-        k_spin_unlock(&reading_lock_, lock_key);
-    }
-
-    bool HasReading(const size_t sensor_id_hash) const {
-        return readings_.contains(sensor_id_hash);
-    }
-
-    bool HasReading(const std::string& sensor_id) const {
-        return readings_.contains(GetSensorIdHash(sensor_id));
+        k_sem_give(&processing_semaphore_);
     }
 
     bool HasIsrReading(const size_t sensor_id_hash) const {
@@ -103,7 +106,23 @@ public:
     }
 
     bool HasIsrReading(const std::string& sensor_id) const {
-        return isr_readings_.contains(GetSensorIdHash(sensor_id));
+        return HasIsrReading(GetSensorIdHash(sensor_id));
+    }
+
+    bool HasReading(const size_t sensor_id_hash) const {
+        return readings_.contains(sensor_id_hash);
+    }
+
+    bool HasReading(const std::string& sensor_id) const {
+        return HasReading(GetSensorIdHash(sensor_id));
+    }
+
+    bool HasProcessedReading(const size_t sensor_id_hash) const {
+        return processed_readings_.contains(sensor_id_hash);
+    }
+
+    bool HasProcessedReading(const std::string& sensor_id) const {
+        return HasProcessedReading(GetSensorIdHash(sensor_id));
     }
 
     bool HasReadingValue(const size_t sensor_id_hash) const {
@@ -112,6 +131,22 @@ public:
 
     bool HasReadingValue(const std::string& sensor_id) const {
         return reading_values_.contains(GetSensorIdHash(sensor_id));
+    }
+
+    SensorReading GetIsrReading(const size_t sensor_id_hash) const {
+        if(!HasIsrReading(sensor_id_hash))
+            ErrorSensorIdNotFound();
+
+        return isr_readings_.at(sensor_id_hash);
+    }
+
+    SensorReading GetIsrReading(const std::string& sensor_id) const {
+        const size_t sensor_id_hash = GetSensorIdHash(sensor_id);
+
+        if(!HasIsrReading(sensor_id_hash))
+            ErrorSensorIdNotFound();
+
+        return isr_readings_.at(sensor_id_hash);
     }
 
     SensorReading GetReading(const size_t sensor_id_hash) const {
@@ -130,20 +165,20 @@ public:
         return readings_.at(sensor_id_hash);
     }
 
-    SensorReading GetIsrReading(const size_t sensor_id_hash) const {
-        if(!HasIsrReading(sensor_id_hash))
+    SensorReading GetProcessedReading(const size_t sensor_id_hash) const {
+        if(!HasProcessedReading(sensor_id_hash))
             ErrorSensorIdNotFound();
 
-        return isr_readings_.at(sensor_id_hash);
+        return processed_readings_.at(sensor_id_hash);
     }
 
-    SensorReading GetIsrReading(const std::string& sensor_id) const {
+    SensorReading GetProcessedReading(const std::string& sensor_id) const {
         const size_t sensor_id_hash = GetSensorIdHash(sensor_id);
 
-        if(!HasIsrReading(sensor_id_hash))
+        if(!HasProcessedReading(sensor_id_hash))
             ErrorSensorIdNotFound();
 
-        return isr_readings_.at(sensor_id_hash);
+        return processed_readings_.at(sensor_id_hash);
     }
 
     float GetReadingValue(const size_t sensor_id_hash) const {
@@ -171,15 +206,29 @@ public:
         return &reading_values_.at(sensor_id_hash);
     }
 
-    const std::pmr::unordered_map<size_t, SensorReading>& GetReadings() const {
-        return readings_;
+    std::pmr::unordered_map<size_t, SensorReading> GetProcessedReadings() const {
+        k_sem_take(&processing_semaphore_, K_FOREVER);
+        std::pmr::unordered_map<size_t, SensorReading> readings(allocator_);
+        for (const auto& [key, value] : processed_readings_)
+            readings.insert({ key, value });
+        k_sem_give(&processing_semaphore_);
+
+        return readings;
+    }
+
+    void ClearProcessedReadings() {
+        k_sem_take(&processing_semaphore_, K_FOREVER);
+        processed_readings_.clear();
+        k_sem_give(&processing_semaphore_);
     }
 
     void ClearReadings() {
-        auto lock_key = k_spin_lock(&reading_lock_);
+        k_sem_take(&processing_semaphore_, K_FOREVER);
+        isr_readings_.clear();
         readings_.clear();
+        processed_readings_.clear();
         reading_values_.clear();
-        k_spin_unlock(&reading_lock_, lock_key);
+        k_sem_give(&processing_semaphore_);
     }
 };
 

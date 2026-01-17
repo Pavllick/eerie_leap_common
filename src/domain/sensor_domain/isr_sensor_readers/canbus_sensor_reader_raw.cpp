@@ -1,7 +1,8 @@
 #include <stdexcept>
 
-#include "canbus_sensor_reader_raw.h"
 #include "zephyr/kernel.h"
+
+#include "canbus_sensor_reader_raw.h"
 
 namespace eerie_leap::domain::sensor_domain::isr_sensor_readers {
 
@@ -34,19 +35,17 @@ CanbusSensorReaderRaw::CanbusSensorReaderRaw(
             if(k_sem_take(&processing_semaphore_, K_NO_WAIT) != 0)
                 return;
 
-            try {
-                work_queue_thread_->Run(
-                    [this, frame]() {
-                        try {
-                            AddOrUpdateReading(frame);
-                            process_sensor_callback_(*sensor_);
-                        } catch (...) {}
+            work_queue_thread_->Run(
+                [this, frame]() {
+                    AddOrUpdateReading(frame);
+                    process_sensor_callback_(*sensor_);
 
-                        k_sem_give(&processing_semaphore_);
-                    });
-            } catch (...) {
-                k_sem_give(&processing_semaphore_);
-            }
+                    // NOTE: High incoming frame rate floods processor
+                    // sleep is needed to let other threads to do work
+                    k_msleep(FRAME_PROCESSING_DELAY_MS);
+
+                    k_sem_give(&processing_semaphore_);
+                });
         });
 
     if(handler_id < 0)

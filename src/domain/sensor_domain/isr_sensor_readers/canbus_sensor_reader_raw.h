@@ -28,6 +28,8 @@ private:
     k_sem processing_semaphore_;
     std::unordered_map<uint32_t, std::vector<int>> registered_handler_ids_;
 
+    static constexpr int FRAME_PROCESSING_DELAY_MS = 4;
+
 protected:
     std::optional<SensorReading> CreateRawReading(const CanFrame& can_frame);
     virtual void AddOrUpdateReading(const CanFrame can_frame);

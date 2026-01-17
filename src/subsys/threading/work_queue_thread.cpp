@@ -50,27 +50,39 @@ void WorkQueueThread::RunnerTaskHandler(k_work* work) {
     auto result = task->Execute();
 
     auto mutex = task->GetMutex();
-
     k_mutex_lock(mutex, K_FOREVER);
-    task->GetRunnerTasks().erase(work);
+
+    auto& tasks = task->GetRunnerTasks();
+    auto& completed_tasks = task->GetCompletedTasks();
+
+    std::erase_if(completed_tasks, [](auto& completed_task) {
+        return !k_work_delayable_is_pending(&completed_task->work); });
+
+    completed_tasks.push_back(
+        std::move(tasks.extract(work).mapped()));
+
     k_mutex_unlock(mutex);
 }
 
 void WorkQueueThread::Run(const WorkQueueRunnerTask::Handler& handler) {
     IsValid();
 
-    try {
-        auto task = std::make_unique<WorkQueueRunnerTask>(
-            &work_q_, &sync_, RunnerTaskHandler, handler, &runner_tasks_mutex_, runner_tasks_);
-        void* work_ptr = &task->work;
+    k_mutex_lock(&runner_tasks_mutex_, K_FOREVER);
 
-        k_mutex_lock(&runner_tasks_mutex_, K_FOREVER);
-        if(runner_tasks_.insert({work_ptr, std::move(task)}).second)
-            runner_tasks_.at(work_ptr)->Schedule();
-        k_mutex_unlock(&runner_tasks_mutex_);
-    } catch (const std::exception& e) {
-        printk("Exception in WorkQueueThread::Run: %s\n", e.what());
-    }
+    auto task = std::make_unique<WorkQueueRunnerTask>(
+        &work_q_,
+        &sync_,
+        RunnerTaskHandler,
+        handler,
+        &runner_tasks_mutex_,
+        runner_tasks_,
+        runner_completed_tasks_);
+    void* work_ptr = &task->work;
+
+    if(runner_tasks_.insert({work_ptr, std::move(task)}).second)
+        runner_tasks_.at(work_ptr)->Schedule();
+
+    k_mutex_unlock(&runner_tasks_mutex_);
 }
 
 } // namespace eerie_leap::subsys::threading

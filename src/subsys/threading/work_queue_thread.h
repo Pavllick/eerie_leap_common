@@ -17,6 +17,7 @@ private:
     bool initialized_ = false;
 
     std::map<void*, std::unique_ptr<WorkQueueRunnerTask>> runner_tasks_;
+    std::vector<std::unique_ptr<WorkQueueRunnerTask>> runner_completed_tasks_;
 
     void IsValid() const;
     static void TaskHandler(k_work* work);

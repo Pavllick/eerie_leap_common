@@ -24,11 +24,17 @@ Canbus::Canbus(
         data_bitrate_(data_bitrate),
         auto_detect_running_(ATOMIC_INIT(0)) {
 
+    k_msgq_init(
+        &frame_msgq_,
+        frame_msgq_buffer_,
+        sizeof(IsrCanFrameWrapper),
+        FRAME_MSGQ_SIZE);
+
     if(type_ == CanbusType::CANFD && data_bitrate_ == 0)
         data_bitrate_ = bitrate_;
 
-    activity_monitor_thread_ = std::make_unique<Thread>(
-        "can_activity_monitor", this, k_stack_size_, k_priority_);
+    thread_ = std::make_unique<Thread>(
+        "can_" + std::string(canbus_dev_->name), this, k_stack_size_, k_priority_);
 }
 
 Canbus::~Canbus() {
@@ -36,8 +42,8 @@ Canbus::~Canbus() {
     if(canbus_dev_ != nullptr && is_initialized_)
         can_stop(canbus_dev_);
 
-    if(activity_monitor_thread_)
-        activity_monitor_thread_->Join();
+    if(thread_)
+        thread_->Join();
 }
 
 bool Canbus::Initialize() {
@@ -52,6 +58,8 @@ bool Canbus::Initialize() {
         LOG_ERR("Failed to get capabilities.");
         return false;
     }
+
+    thread_->Initialize();
 
     can_mode_t can_mode = CAN_MODE_NORMAL;
     if(type_ == CanbusType::CANFD && (capabilities & CAN_MODE_FD))
@@ -69,7 +77,6 @@ bool Canbus::Initialize() {
     if(bitrate_ == 0) {
         LOG_INF("Auto-bitrate mode enabled - will detect on bus activity");
 
-        activity_monitor_thread_->Initialize();
         if(!StartActivityMonitoring()) {
             LOG_ERR("Failed to start activity monitoring.");
             return false;
@@ -98,6 +105,8 @@ bool Canbus::Initialize() {
 
     LOG_INF("CANBus initialized successfully.");
     is_initialized_ = true;
+
+    thread_->Start();
 
     return true;
 }
@@ -175,17 +184,15 @@ void Canbus::CanFrameReceivedCallback(const device *dev, can_frame *frame, void 
 
     auto* canbus = static_cast<Canbus*>(user_data);
 
-    CanFrame can_frame = {
-        .id = frame->id
+    if(!canbus->handlers_.contains(frame->id))
+        return;
+
+    IsrCanFrameWrapper wrapper = {
+        .canbus = canbus,
+        .frame = *frame
     };
 
-    can_frame.data.resize(frame->dlc);
-    std::copy(frame->data, frame->data + frame->dlc, can_frame.data.begin());
-
-    if(canbus->handlers_.contains(frame->id)) {
-        for(const auto& [_, handler] : canbus->handlers_.at(frame->id))
-            handler(can_frame);
-    }
+    k_msgq_put(&canbus->frame_msgq_, &wrapper, K_NO_WAIT);
 }
 
 int Canbus::RegisterFrameReceivedHandler(uint32_t can_id, CanFrameHandler handler) {
@@ -277,21 +284,26 @@ bool Canbus::RemoveFrameReceivedHandler(uint32_t can_id, int handler_id) {
 bool Canbus::StartActivityMonitoring() {
     atomic_set(&auto_detect_running_, 1);
 
-    activity_monitor_thread_->Join();
-    activity_monitor_thread_->Start();
-
     return true;
 }
 
 void Canbus::StopActivityMonitoring() {
-    if(atomic_get(&auto_detect_running_)) {
+    if(atomic_get(&auto_detect_running_))
         atomic_set(&auto_detect_running_, 0);
-
-        activity_monitor_thread_->Join();
-    }
 }
 
 void Canbus::ThreadEntry() {
+    LOG_INF("CANBus thread started.");
+
+    while(true) {
+        if(atomic_get(&auto_detect_running_) && !bitrate_detected_)
+            BitrateAutodetectTask();
+
+        ProcessFramesTask();
+    }
+}
+
+void Canbus::BitrateAutodetectTask() {
     LOG_INF("CANBus auto-detection started.");
 
     while(atomic_get(&auto_detect_running_) && !bitrate_detected_) {
@@ -311,6 +323,30 @@ void Canbus::ThreadEntry() {
     }
 
     LOG_INF("CANBus auto-detection stopped.");
+}
+
+void Canbus::ProcessFramesTask() {
+    IsrCanFrameWrapper frame_wrapper;
+    if(k_msgq_get(&frame_msgq_, &frame_wrapper, K_FOREVER) != 0)
+        return;
+
+    auto* canbus = frame_wrapper.canbus;
+    can_frame* frame = &frame_wrapper.frame;
+
+    CanFrame can_frame = {
+        .id = frame->id,
+        .is_transmit = false,
+        .is_can_fd = (frame->flags & CAN_FRAME_FDF) != 0
+    };
+
+    int frame_size = can_dlc_to_bytes(frame->dlc);
+    can_frame.data.resize(frame_size);
+    std::copy(frame->data, frame->data + frame_size, can_frame.data.begin());
+
+    if(canbus->handlers_.contains(frame->id)) {
+        for(const auto& [_, handler] : canbus->handlers_.at(frame->id))
+            handler(can_frame);
+    }
 }
 
 bool Canbus::AutoDetectBitrate() {
