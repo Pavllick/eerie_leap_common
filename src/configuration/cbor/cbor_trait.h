@@ -29,9 +29,9 @@ public:
         CborGetSerializingSizeFn<T> get_size)
     {
         registry_[std::type_index(typeid(T))] = {
-            reinterpret_cast<void*>(encode),
-            reinterpret_cast<void*>(decode),
-            reinterpret_cast<void*>(get_size)
+            .encode = reinterpret_cast<void*>(encode),
+            .decode = reinterpret_cast<void*>(decode),
+            .get_size = reinterpret_cast<void*>(get_size)
         };
     }
 
@@ -45,9 +45,9 @@ public:
 
         auto& funcs = registry_.at(std::type_index(typeid(T)));
         return Result{
-            reinterpret_cast<CborEncodeFn<T>>(funcs.encode),
-            reinterpret_cast<CborDecodeFn<T>>(funcs.decode),
-            reinterpret_cast<CborGetSerializingSizeFn<T>>(funcs.get_size)
+            .encode = reinterpret_cast<CborEncodeFn<T>>(funcs.encode),
+            .decode = reinterpret_cast<CborDecodeFn<T>>(funcs.decode),
+            .get_size = reinterpret_cast<CborGetSerializingSizeFn<T>>(funcs.get_size)
         };
     }
 

@@ -68,6 +68,12 @@ config EERIE_LEAP_DOMAIN_SENSOR
     help
       Add EerieLeap Sensor Domain.
 
+config EERIE_LEAP_DOMAIN_SYSTEM
+    depends on EERIE_LEAP_CONFIGURATION
+    bool "EerieLeap System Domain"
+    help
+      Add EerieLeap System Domain.
+
 module = EERIE_LEAP_COMMON
 module-str = eerie_leap_common
 

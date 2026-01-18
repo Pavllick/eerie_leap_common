@@ -225,6 +225,18 @@ if(CONFIG_EERIE_LEAP_COMMON)
         )
     endif()
 
+    if(CONFIG_EERIE_LEAP_DOMAIN_SYSTEM)
+        list(APPEND SRC
+            "${SRC_DIR}/domain/system_domain/*.c"
+            "${SRC_DIR}/domain/system_domain/*.cpp"
+        )
+
+        list(APPEND SRC
+            "${SRC_DIR}/configuration/cbor/traits/system_config_trait.cpp"
+            "${SRC_DIR}/configuration/cbor/cbor_system_config/*.c"
+        )
+    endif()
+
     # ========================
 
     file(GLOB_RECURSE SRC ${SRC})

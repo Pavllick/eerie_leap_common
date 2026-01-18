@@ -63,7 +63,7 @@ std::unique_ptr<SensorTask> ProcessingSchedulerService::CreateSensorTask(std::sh
     if(reader == nullptr)
         return nullptr;
 
-    if(sensor->configuration.sampling_rate_ms == 0)
+    if(!sensor->configuration.sampling_rate_ms.has_value() || sensor->configuration.sampling_rate_ms.value() == 0)
         return nullptr;
 
     auto task = std::make_unique<SensorTask>();
