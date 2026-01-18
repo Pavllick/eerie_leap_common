@@ -45,10 +45,10 @@ std::unique_ptr<IIsrSensorReader> IsrSensorReaderFactory::Create(
         if(channel_configuration == nullptr)
             return nullptr;
 
+        if(!channel_configuration->dbc->HasMessage(sensor->configuration.canbus_source->frame_id))
+            return nullptr;
         auto* dbc_message = channel_configuration->dbc->GetMessage(
             sensor->configuration.canbus_source->frame_id);
-        if(dbc_message == nullptr)
-            return nullptr;
 
         if(!dbc_message->HasSignal(sensor->configuration.canbus_source->signal_name))
             return nullptr;
