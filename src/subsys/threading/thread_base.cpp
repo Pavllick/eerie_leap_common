@@ -1,10 +1,13 @@
+#include <cmath>
+
 #include "thread_base.h"
 
 namespace eerie_leap::subsys::threading {
 
 ThreadBase::ThreadBase(std::string name, int stack_size, int priority, bool is_cooperative)
     : k_stack_size_(stack_size),
-      k_priority_(is_cooperative ? K_PRIO_COOP(priority) : K_PRIO_PREEMPT(priority)),
+      k_priority_(is_cooperative
+        ? std::abs(priority) * -1 : std::abs(priority)),
       stack_area_(nullptr),
       name_(std::move(name)) {}
 

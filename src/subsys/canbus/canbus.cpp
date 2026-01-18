@@ -34,7 +34,11 @@ Canbus::Canbus(
         data_bitrate_ = bitrate_;
 
     thread_ = std::make_unique<Thread>(
-        "can_" + std::string(canbus_dev_->name), this, k_stack_size_, k_priority_);
+        "can_" + std::string(canbus_dev_->name),
+        this,
+        thread_stack_size_,
+        thread_priority_,
+        thread_is_cooperative);
 }
 
 Canbus::~Canbus() {

@@ -44,8 +44,6 @@ private:
     uint8_t GetNextTransactionId();
 
 public:
-    static constexpr int DEFAULT_TRANSACTION_TIMEOUT = 500;
-
     CdmpTransactionService(
         std::shared_ptr<WorkQueueThread> work_queue_thread,
         std::shared_ptr<CdmpDevice> device);
@@ -58,7 +56,7 @@ public:
 
     uint8_t StartTransaction(
         uint8_t expected_command,
-        int timeout = DEFAULT_TRANSACTION_TIMEOUT,
+        int timeout = CONFIG_EERIE_LEAP_CDMP_CMD_TRANSACTION_TIMEOUT_MS,
         CdmpTransactionCallback callback = nullptr);
     void CompleteTransaction(const CdmpCommandResponseMessage& response);
 

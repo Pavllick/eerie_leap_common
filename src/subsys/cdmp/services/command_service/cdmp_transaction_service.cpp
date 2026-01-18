@@ -133,7 +133,7 @@ WorkQueueTaskResult CdmpTransactionService::ProcessTransactionTimeouts(CdmpTrans
 
     return {
         .reschedule = instance->is_timeout_task_running_,
-        .delay = K_MSEC(DEFAULT_TRANSACTION_TIMEOUT / 2)
+        .delay = K_MSEC(CONFIG_EERIE_LEAP_CDMP_CMD_TRANSACTION_TIMEOUT_MS / 2)
     };
 }
 

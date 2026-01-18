@@ -29,4 +29,10 @@ menu "EerieLeap CDMP config"
         default 4096
         help
           Add EerieLeap CDMP Work Queue Stack Size.
+
+    config EERIE_LEAP_CDMP_CMD_TRANSACTION_TIMEOUT_MS
+        int "EerieLeap CDMP Command Transaction Timeout"
+        default 500
+        help
+          Add EerieLeap CDMP Command Transaction Timeout.
 endmenu

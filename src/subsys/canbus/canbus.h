@@ -31,7 +31,7 @@ private:
         can_frame frame;
     };
 
-    static constexpr int FRAME_MSGQ_SIZE = 8;
+    static constexpr int FRAME_MSGQ_SIZE = 4;
     char frame_msgq_buffer_[FRAME_MSGQ_SIZE * sizeof(IsrCanFrameWrapper)];
     k_msgq frame_msgq_;
 
@@ -52,9 +52,12 @@ private:
     static constexpr uint32_t AUTO_DETECT_TIMEOUT_MS = 500;
     static constexpr uint32_t MIN_FRAMES_FOR_DETECTION = 3;
 
-    static constexpr int k_stack_size_ = 2048;
-    static constexpr int k_priority_ = -10;
-
+    // NOTE: Thread is used as a Bottom Half for IRQ processing
+    // and should have highest priority, or have MetaIRQ priority level,
+    // for that set CONFIG_NUM_METAIRQ_PRIORITIES to be > 0
+    static constexpr int thread_priority_ = K_HIGHEST_THREAD_PRIO;
+    static constexpr bool thread_is_cooperative = true;
+    static constexpr int thread_stack_size_ = 2048;
     std::unique_ptr<Thread> thread_;
 
     // Ordered by most common first

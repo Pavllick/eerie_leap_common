@@ -227,7 +227,7 @@ uint8_t CdmpCommandService::SendCommand(
 
         uint8_t transaction_id = transaction_service_->StartTransaction(
             command_code,
-            CdmpTransactionService::DEFAULT_TRANSACTION_TIMEOUT,
+            CONFIG_EERIE_LEAP_CDMP_CMD_TRANSACTION_TIMEOUT_MS,
             callback);
 
         CdmpCommandRequestMessage command{

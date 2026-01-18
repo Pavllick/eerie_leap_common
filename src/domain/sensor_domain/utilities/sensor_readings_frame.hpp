@@ -206,11 +206,10 @@ public:
         return &reading_values_.at(sensor_id_hash);
     }
 
-    std::pmr::unordered_map<size_t, SensorReading> GetProcessedReadings() const {
+    std::unordered_map<size_t, SensorReading> GetProcessedReadings() const {
         k_sem_take(&processing_semaphore_, K_FOREVER);
-        std::pmr::unordered_map<size_t, SensorReading> readings(allocator_);
-        for (const auto& [key, value] : processed_readings_)
-            readings.insert({ key, value });
+        std::unordered_map<size_t, SensorReading> readings(
+            processed_readings_.begin(), processed_readings_.end());
         k_sem_give(&processing_semaphore_);
 
         return readings;
