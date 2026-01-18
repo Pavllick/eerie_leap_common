@@ -5,8 +5,8 @@
 
 namespace eerie_leap::domain::sensor_domain::processors {
 
-AdcReadingProcessor::AdcReadingProcessor(std::shared_ptr<SensorReadingsFrame> sensor_readings_frame) :
-    sensor_readings_frame_(std::move(sensor_readings_frame)) {}
+AdcReadingProcessor::AdcReadingProcessor(std::shared_ptr<SensorReadingsFrame> sensor_readings_frame)
+    : sensor_readings_frame_(std::move(sensor_readings_frame)) {}
 
 void AdcReadingProcessor::ProcessReading(const size_t sensor_id_hash) {
     if(!sensor_readings_frame_->HasReading(sensor_id_hash))
