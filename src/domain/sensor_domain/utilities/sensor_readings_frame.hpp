@@ -1,5 +1,6 @@
 #pragma once
 
+#include <optional>
 #include <unordered_map>
 #include <stdexcept>
 #include <string>
@@ -127,6 +128,24 @@ public:
         const size_t sensor_id_hash = GetSensorIdHash(sensor_id);
 
         return TryGetReading(sensor_id_hash);
+    }
+
+    std::optional<float> TryGetReadingValue(const size_t sensor_id_hash) const {
+        k_sem_take(&processing_semaphore_, K_FOREVER);
+
+        std::optional<float> reading = std::nullopt;
+        if(reading_values_.contains(sensor_id_hash))
+            reading.emplace(reading_values_.at(sensor_id_hash));
+
+        k_sem_give(&processing_semaphore_);
+
+        return reading;
+    }
+
+    std::optional<float> TryGetReadingValue(const std::string& sensor_id) const {
+        const size_t sensor_id_hash = GetSensorIdHash(sensor_id);
+
+        return TryGetReadingValue(sensor_id_hash);
     }
 
     float* GetReadingValuePtr(const std::string& sensor_id) {
