@@ -6,10 +6,10 @@ ScriptProcessor::ScriptProcessor(const std::string& function_name, std::shared_p
     : function_name_(function_name), sensor_readings_frame_(std::move(sensor_readings_frame)) {}
 
 void ScriptProcessor::ProcessReading(const size_t sensor_id_hash) {
-    if(!sensor_readings_frame_->HasReading(sensor_id_hash))
+    auto reading_optioanl = sensor_readings_frame_->TryGetReading(sensor_id_hash);
+    if(!reading_optioanl)
         return;
-
-    auto reading = sensor_readings_frame_->GetReading(sensor_id_hash);
+    auto reading = std::move(reading_optioanl.value());
 
     try {
         auto lua_script = reading.sensor->configuration.lua_script;

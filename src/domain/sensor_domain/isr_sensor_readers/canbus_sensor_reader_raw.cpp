@@ -66,7 +66,7 @@ std::optional<SensorReading> CanbusSensorReaderRaw::CreateRawReading(const CanFr
     if(can_frame.data.empty())
         return std::nullopt;
 
-    SensorReading reading(std::allocator_arg, Mrm::GetExtPmr(), guid_generator_->Generate(), sensor_);
+    SensorReading reading(guid_generator_->Generate(), sensor_);
     reading.source = ReadingSource::ISR;
     reading.timestamp = time_service_->GetCurrentTime();
 

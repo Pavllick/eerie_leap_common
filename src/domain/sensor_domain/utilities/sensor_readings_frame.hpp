@@ -2,7 +2,6 @@
 
 #include <unordered_map>
 #include <stdexcept>
-#include <memory_resource>
 #include <string>
 
 #include <zephyr/spinlock.h>
@@ -16,28 +15,26 @@ using namespace eerie_leap::utilities::string;
 using namespace eerie_leap::domain::sensor_domain::models;
 
 class SensorReadingsFrame {
-public:
-    using allocator_type = std::pmr::polymorphic_allocator<>;
-
 private:
-    std::pmr::unordered_map<size_t, SensorReading> isr_readings_;
-    std::pmr::unordered_map<size_t, SensorReading> readings_;
-    std::pmr::unordered_map<size_t, SensorReading> processed_readings_;
+    std::unordered_map<size_t, SensorReading> isr_readings_;
+    std::unordered_map<size_t, SensorReading> readings_;
+    std::unordered_map<size_t, SensorReading> processed_readings_;
     std::unordered_map<size_t, float> reading_values_;
     mutable std::unordered_map<std::string, size_t> sensor_id_hash_map_;
 
     mutable k_sem processing_semaphore_;
-    allocator_type allocator_;
 
     size_t GetSensorIdHash(const std::string& sensor_id) const {
+        k_sem_take(&processing_semaphore_, K_FOREVER);
+
         if(!sensor_id_hash_map_.contains(sensor_id))
             sensor_id_hash_map_.emplace(sensor_id, StringHelpers::GetHash(sensor_id));
 
-        return sensor_id_hash_map_.at(sensor_id);
-    }
+        size_t sensor_id_hash = sensor_id_hash_map_.at(sensor_id);
 
-    static inline void ErrorSensorIdNotFound() {
-        throw std::runtime_error("Sensor ID not found");
+        k_sem_give(&processing_semaphore_);
+
+        return sensor_id_hash;
     }
 
     void AddOrUpdateReadingIsr(SensorReading& reading) {
@@ -71,15 +68,12 @@ private:
 
             if(processed_readings_.contains(sensor_id_hash))
                 processed_readings_.erase(sensor_id_hash);
-
             processed_readings_.insert({ sensor_id_hash, reading });
         }
     }
 
 public:
-    SensorReadingsFrame(std::allocator_arg_t, allocator_type alloc)
-        : isr_readings_(alloc), readings_(alloc), processed_readings_(alloc), allocator_(alloc) {
-
+    SensorReadingsFrame() {
         k_sem_init(&processing_semaphore_, 1, 1);
     }
 
@@ -88,122 +82,65 @@ public:
     SensorReadingsFrame& operator=(const SensorReadingsFrame&) = delete;
     SensorReadingsFrame& operator=(SensorReadingsFrame&&) = delete;
 
-    void AddOrUpdateReading(SensorReading reading) {
+    void AddOrUpdateReading(SensorReading& reading) {
         k_sem_take(&processing_semaphore_, K_FOREVER);
 
         if(reading.source == ReadingSource::ISR)
             AddOrUpdateReadingIsr(reading);
         else if(reading.source == ReadingSource::PROCESSING)
             AddOrUpdateReadingProcessing(reading);
-        else
-            throw std::runtime_error("Invalid reading source");
 
         k_sem_give(&processing_semaphore_);
     }
 
-    bool HasIsrReading(const size_t sensor_id_hash) const {
-        return isr_readings_.contains(sensor_id_hash);
+    std::optional<SensorReading> TryGetIsrReading(const size_t sensor_id_hash) const {
+        k_sem_take(&processing_semaphore_, K_FOREVER);
+
+        std::optional<SensorReading> reading = std::nullopt;
+        if(isr_readings_.contains(sensor_id_hash))
+            reading.emplace(isr_readings_.at(sensor_id_hash));
+
+        k_sem_give(&processing_semaphore_);
+
+        return reading;
     }
 
-    bool HasIsrReading(const std::string& sensor_id) const {
-        return HasIsrReading(GetSensorIdHash(sensor_id));
-    }
-
-    bool HasReading(const size_t sensor_id_hash) const {
-        return readings_.contains(sensor_id_hash);
-    }
-
-    bool HasReading(const std::string& sensor_id) const {
-        return HasReading(GetSensorIdHash(sensor_id));
-    }
-
-    bool HasProcessedReading(const size_t sensor_id_hash) const {
-        return processed_readings_.contains(sensor_id_hash);
-    }
-
-    bool HasProcessedReading(const std::string& sensor_id) const {
-        return HasProcessedReading(GetSensorIdHash(sensor_id));
-    }
-
-    bool HasReadingValue(const size_t sensor_id_hash) const {
-        return reading_values_.contains(sensor_id_hash);
-    }
-
-    bool HasReadingValue(const std::string& sensor_id) const {
-        return reading_values_.contains(GetSensorIdHash(sensor_id));
-    }
-
-    SensorReading GetIsrReading(const size_t sensor_id_hash) const {
-        if(!HasIsrReading(sensor_id_hash))
-            ErrorSensorIdNotFound();
-
-        return isr_readings_.at(sensor_id_hash);
-    }
-
-    SensorReading GetIsrReading(const std::string& sensor_id) const {
+    std::optional<SensorReading> TryGetIsrReading(const std::string& sensor_id) const {
         const size_t sensor_id_hash = GetSensorIdHash(sensor_id);
 
-        if(!HasIsrReading(sensor_id_hash))
-            ErrorSensorIdNotFound();
-
-        return isr_readings_.at(sensor_id_hash);
+        return TryGetIsrReading(sensor_id_hash);
     }
 
-    SensorReading GetReading(const size_t sensor_id_hash) const {
-        if(!HasReading(sensor_id_hash))
-            ErrorSensorIdNotFound();
+    std::optional<SensorReading> TryGetReading(const size_t sensor_id_hash) const {
+        k_sem_take(&processing_semaphore_, K_FOREVER);
 
-        return readings_.at(sensor_id_hash);
+        std::optional<SensorReading> reading = std::nullopt;
+        if(readings_.contains(sensor_id_hash))
+            reading.emplace(readings_.at(sensor_id_hash));
+
+        k_sem_give(&processing_semaphore_);
+
+        return reading;
     }
 
-    SensorReading GetReading(const std::string& sensor_id) const {
+    std::optional<SensorReading> TryGetReading(const std::string& sensor_id) const {
         const size_t sensor_id_hash = GetSensorIdHash(sensor_id);
 
-        if(!HasReading(sensor_id_hash))
-            ErrorSensorIdNotFound();
-
-        return readings_.at(sensor_id_hash);
-    }
-
-    SensorReading GetProcessedReading(const size_t sensor_id_hash) const {
-        if(!HasProcessedReading(sensor_id_hash))
-            ErrorSensorIdNotFound();
-
-        return processed_readings_.at(sensor_id_hash);
-    }
-
-    SensorReading GetProcessedReading(const std::string& sensor_id) const {
-        const size_t sensor_id_hash = GetSensorIdHash(sensor_id);
-
-        if(!HasProcessedReading(sensor_id_hash))
-            ErrorSensorIdNotFound();
-
-        return processed_readings_.at(sensor_id_hash);
-    }
-
-    float GetReadingValue(const size_t sensor_id_hash) const {
-        if(!HasReadingValue(sensor_id_hash))
-            ErrorSensorIdNotFound();
-
-        return reading_values_.at(sensor_id_hash);
-    }
-
-    float GetReadingValue(const std::string& sensor_id) const {
-        const size_t sensor_id_hash = GetSensorIdHash(sensor_id);
-
-        if(!HasReadingValue(sensor_id_hash))
-            ErrorSensorIdNotFound();
-
-        return reading_values_.at(sensor_id_hash);
+        return TryGetReading(sensor_id_hash);
     }
 
     float* GetReadingValuePtr(const std::string& sensor_id) {
         const size_t sensor_id_hash = GetSensorIdHash(sensor_id);
 
-        if(!HasReadingValue(sensor_id_hash))
-            ErrorSensorIdNotFound();
+        k_sem_take(&processing_semaphore_, K_FOREVER);
 
-        return &reading_values_.at(sensor_id_hash);
+        float* value_ptr = nullptr;
+        if(reading_values_.contains(sensor_id_hash))
+            value_ptr = &reading_values_.at(sensor_id_hash);
+
+        k_sem_give(&processing_semaphore_);
+
+        return value_ptr;
     }
 
     std::unordered_map<size_t, SensorReading> GetProcessedReadings() const {
@@ -213,6 +150,22 @@ public:
         k_sem_give(&processing_semaphore_);
 
         return readings;
+    }
+
+    bool HasIsrReading(const size_t sensor_id_hash) {
+        k_sem_take(&processing_semaphore_, K_FOREVER);
+        bool result = isr_readings_.contains(sensor_id_hash);
+        k_sem_give(&processing_semaphore_);
+
+        return result;
+    }
+
+    bool HasReading(const size_t sensor_id_hash) {
+        k_sem_take(&processing_semaphore_, K_FOREVER);
+        bool result = readings_.contains(sensor_id_hash);
+        k_sem_give(&processing_semaphore_);
+
+        return result;
     }
 
     void ClearProcessedReadings() {

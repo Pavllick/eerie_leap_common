@@ -6,6 +6,7 @@
 #include <chrono>
 
 #include "utilities/guid/guid.hpp"
+
 #include "sensor.h"
 #include "reading_source.h"
 #include "reading_status.h"
@@ -16,42 +17,26 @@ namespace eerie_leap::domain::sensor_domain::models {
 using namespace std::chrono;
 using namespace eerie_leap::utilities::guid;
 
+// NOTE: SensorReading is a non allocator-aware type due to
+// complications overweighting benefits, especially because of the
+// variant type in the ReadingMetadata, which requres too much work
+// for correct allocator management, on top of that it's not clear
+// if it makes any sense to make CanFrame allocator-aware.
+// Review implementation in case of memory shotage.
 struct SensorReading {
-    using allocator_type = std::pmr::polymorphic_allocator<>;
-
     const Guid id;
     const std::shared_ptr<Sensor> sensor;
     std::optional<float> value;
     std::optional<system_clock::time_point> timestamp;
     ReadingSource source = ReadingSource::NONE;
     ReadingStatus status = ReadingStatus::UNINITIALIZED;
-    std::optional<std::pmr::string> error_message;
+    std::optional<std::string> error_message = std::nullopt;
     ReadingMetadata metadata;
 
-    SensorReading(
-        std::allocator_arg_t,
-        allocator_type alloc,
-        const Guid id,
-        std::shared_ptr<Sensor> sensor)
-            : id(id),
-                sensor(std::move(sensor)),
-                metadata(std::allocator_arg, alloc) {}
+    SensorReading(const Guid id, std::shared_ptr<Sensor> sensor)
+        : id(id), sensor(std::move(sensor)) {}
 
-    SensorReading(const SensorReading& other) = default;
-	SensorReading& operator=(const SensorReading&) = delete;
-	SensorReading& operator=(SensorReading&&) = delete;
-	SensorReading(SensorReading&&) noexcept = default;
-	~SensorReading() = default;
-
-    SensorReading(SensorReading&& other, allocator_type alloc) noexcept
-        : id(other.id),
-        sensor(other.sensor),
-        value(other.value),
-        timestamp(other.timestamp),
-        source(other.source),
-        status(other.status),
-        error_message(other.error_message),
-        metadata(std::move(other.metadata), alloc) {}
+    ~SensorReading() = default;
 };
 
 }

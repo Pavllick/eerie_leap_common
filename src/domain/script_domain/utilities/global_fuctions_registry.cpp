@@ -22,12 +22,13 @@ int GlobalFunctionsRegistry::LuaGetSensorValue(lua_State* state) {
 
     const char* sensor_id = luaL_checkstring(state, 1);
 
-    if(!sensor_readings_frame->HasReading(sensor_id) || !sensor_readings_frame->GetReading(sensor_id).value.has_value()) {
+    auto reading_optional = sensor_readings_frame->TryGetReading(sensor_id);
+    if(!reading_optional || !reading_optional.value().value.has_value()) {
         lua_pushnil(state);
         return 1;
     }
 
-    float result = sensor_readings_frame->GetReading(sensor_id).value.value();
+    float result = reading_optional.value().value.value();
     lua_pushnumber(state, result);
 
     return 1;
@@ -43,12 +44,13 @@ int GlobalFunctionsRegistry::LuaUpdateSensorValue(lua_State* state) {
     const char* sensor_id = luaL_checkstring(state, 1);
     float value = luaL_checknumber(state, 2);
 
-    if(!sensor_readings_frame->HasReading(sensor_id)) {
+    auto reading_optional = sensor_readings_frame->TryGetReading(sensor_id);
+    if(!reading_optional) {
         lua_pushboolean(state, false);
         return 1;
     }
 
-    auto reading = sensor_readings_frame->GetReading(sensor_id);
+    auto reading = reading_optional.value();
     reading.value = value;
 
     sensor_readings_frame->AddOrUpdateReading(reading);

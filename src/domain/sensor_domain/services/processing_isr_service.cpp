@@ -37,7 +37,11 @@ void ProcessingIsrService::ProcessSensor(const Sensor& sensor) {
             for(auto processor : *reading_processors_)
                 processor->ProcessReading(sensor.id_hash);
 
-            auto reading = sensor_readings_frame_->GetReading(sensor.id_hash);
+            auto reading_optioanl = sensor_readings_frame_->TryGetReading(sensor.id_hash);
+            if(!reading_optioanl)
+                return;
+            auto reading = std::move(reading_optioanl.value());
+
             if(reading.status < ReadingStatus::PROCESSED) {
                 reading.status = ReadingStatus::PROCESSED;
                 sensor_readings_frame_->AddOrUpdateReading(reading);

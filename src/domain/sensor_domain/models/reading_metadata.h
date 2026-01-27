@@ -18,27 +18,18 @@ using ReadingMetadataValue = std::variant<
     std::monostate,
     int,
     float,
-    std::string,
+    std::pmr::string,
     bool,
     CanFrame
 >;
 
-struct ReadingMetadata {
-    using allocator_type = std::pmr::polymorphic_allocator<>;
+class ReadingMetadata {
+private:
+    std::unordered_map<ReadingMetadataTag, ReadingMetadataValue> tags;
 
-    std::pmr::unordered_map<ReadingMetadataTag, ReadingMetadataValue> tags;
-
-    ReadingMetadata(std::allocator_arg_t, allocator_type alloc)
-        : tags(alloc) {}
-
-    ReadingMetadata(const ReadingMetadata& other) = default;
-	ReadingMetadata& operator=(const ReadingMetadata&) noexcept = default;
-	ReadingMetadata& operator=(ReadingMetadata&&) noexcept = default;
-	ReadingMetadata(ReadingMetadata&&) noexcept = default;
-	~ReadingMetadata() = default;
-
-    ReadingMetadata(ReadingMetadata&& other, allocator_type alloc) noexcept
-        : tags(std::move(other.tags), alloc) {}
+public:
+    ReadingMetadata() = default;
+    ~ReadingMetadata() = default;
 
     void AddTag(const ReadingMetadataTag tag, const ReadingMetadataValue& value) {
         tags[tag] = value;

@@ -9,10 +9,10 @@ CollectIsrReadingProcessor::CollectIsrReadingProcessor(std::shared_ptr<SensorRea
     sensor_readings_frame_(std::move(sensor_readings_frame)) {}
 
 void CollectIsrReadingProcessor::ProcessReading(const size_t sensor_id_hash) {
-    if(!sensor_readings_frame_->HasIsrReading(sensor_id_hash))
+    auto reading_optioanl = sensor_readings_frame_->TryGetIsrReading(sensor_id_hash);
+    if(!reading_optioanl)
         return;
-
-    auto reading = sensor_readings_frame_->GetIsrReading(sensor_id_hash);
+    auto reading = std::move(reading_optioanl.value());
 
     try {
         if(reading.status != ReadingStatus::RAW)

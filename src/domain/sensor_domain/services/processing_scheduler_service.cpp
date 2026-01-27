@@ -35,17 +35,20 @@ WorkQueueTaskResult ProcessingSchedulerService::ProcessSensorWorkTask(SensorTask
             for(auto processor : *task->reading_processors)
                 processor->ProcessReading(task->sensor->id_hash);
 
-            auto reading = task->readings_frame->GetReading(task->sensor->id_hash);
-            if(reading.status < ReadingStatus::PROCESSED) {
-                reading.status = ReadingStatus::PROCESSED;
-                task->readings_frame->AddOrUpdateReading(reading);
-            }
+            auto reading_optional = task->readings_frame->TryGetReading(task->sensor->id_hash);
+            if(reading_optional) {
+                auto reading = std::move(reading_optional.value());
+                if(reading.status < ReadingStatus::PROCESSED) {
+                    reading.status = ReadingStatus::PROCESSED;
+                    task->readings_frame->AddOrUpdateReading(reading);
+                }
 
-            LOG_DBG("Sensor Reading - ID: %s, Guid: %llu, Value: %.3f, Time: %s",
-                task->sensor->id.c_str(),
-                reading.id.AsUint64(),
-                reading.value.value_or(0.0f),
-                TimeHelpers::GetFormattedString(reading.timestamp.value()).c_str());
+                LOG_DBG("Sensor Reading - ID: %s, Guid: %llu, Value: %.3f, Time: %s",
+                    task->sensor->id.c_str(),
+                    reading.id.AsUint64(),
+                    reading.value.value_or(0.0f),
+                    TimeHelpers::GetFormattedString(reading.timestamp.value()).c_str());
+            }
         }
     } catch (const std::exception& e) {
         LOG_DBG("Error processing sensor: %s, Error: %s", task->sensor->id.c_str(), e.what());
